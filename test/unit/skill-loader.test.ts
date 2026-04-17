@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { parseSkill, composeInstructions } from "../../src/mcp/skill-loader.js";
 
-const SAMPLE = `# ChitterChatter Agent Skill
+const SAMPLE = `# ChitChat Agent Skill
 Intro line.
 
 ## On connect

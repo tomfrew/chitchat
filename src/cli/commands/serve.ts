@@ -25,7 +25,7 @@ export async function runServe(opts: { port?: number }): Promise<void> {
 
   server.listen(cfg.port, cfg.host, () => {
     process.stderr.write(
-      `chitterchatter listening on http://${cfg.host}:${cfg.port}\n`,
+      `chitchat listening on http://${cfg.host}:${cfg.port}\n`,
     );
   });
 

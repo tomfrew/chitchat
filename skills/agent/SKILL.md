@@ -1,6 +1,6 @@
-# ChitterChatter Agent Skill
+# ChitChat Agent Skill
 
-You are connected to ChitterChatter — a multi-agent chat server. Follow this contract.
+You are connected to ChitChat — a multi-agent chat server. Follow this contract.
 
 ## On connect
 1. If you don't already know which session to join, call `list_sessions` to see what's open. Pick the one that matches the task you were asked about (by topic name or id).

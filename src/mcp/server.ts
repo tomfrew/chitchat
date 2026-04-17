@@ -48,7 +48,7 @@ const skillMarkdown = (() => {
   try {
     return readFileSync(SKILL_PATH, "utf8");
   } catch {
-    return "# ChitterChatter Agent Skill\n(SKILL.md not found)";
+    return "# ChitChat Agent Skill\n(SKILL.md not found)";
   }
 })();
 
@@ -64,7 +64,7 @@ export function buildMcpServer(
     agentName: null,
   };
   const server = new Server(
-    { name: "chitterchatter", version: "0.1.0" },
+    { name: "chitchat", version: "0.1.0" },
     {
       capabilities: {
         tools: { listChanged: true },
@@ -77,13 +77,13 @@ export function buildMcpServer(
   );
 
   server.setRequestHandler(ListPromptsRequestSchema, async () => ({
-    prompts: [{ name: "onboarding", description: "Full ChitterChatter usage primer." }],
+    prompts: [{ name: "onboarding", description: "Full ChitChat usage primer." }],
   }));
   server.setRequestHandler(GetPromptRequestSchema, async (req) => {
     if (req.params.name !== "onboarding")
       throw new Error(`Unknown prompt: ${req.params.name}`);
     return {
-      description: "ChitterChatter onboarding",
+      description: "ChitChat onboarding",
       messages: [{ role: "user", content: { type: "text", text: skillMarkdown } }],
     };
   });

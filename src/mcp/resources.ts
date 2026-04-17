@@ -11,10 +11,10 @@ import { listActiveAgents } from "../storage/agents.js";
 import { getMessages } from "../storage/messages.js";
 
 export const URI = {
-  session: "chitterchatter://session",
-  messages: "chitterchatter://messages",
-  peers: "chitterchatter://peers",
-  skill: "chitterchatter://skill",
+  session: "chitchat://session",
+  messages: "chitchat://messages",
+  peers: "chitchat://peers",
+  skill: "chitchat://skill",
 };
 
 export interface ResourceHandle {

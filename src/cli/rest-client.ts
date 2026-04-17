@@ -42,8 +42,8 @@ export class RestClient {
 
 export function defaultBaseUrl(): string {
   return (
-    process.env.CHITTERCHATTER_URL ??
-    `http://127.0.0.1:${process.env.CHITTERCHATTER_PORT ?? 7777}`
+    process.env.CHITCHAT_URL ??
+    `http://127.0.0.1:${process.env.CHITCHAT_PORT ?? 7777}`
   );
 }
 
@@ -52,8 +52,8 @@ export async function ensureDaemonOrExit(client: RestClient): Promise<void> {
     await client.get("/status");
   } catch {
     process.stderr.write(
-      `No chitterchatter daemon at ${client.baseUrl}. ` +
-        `Run \`chitterchatter serve\` in another terminal.\n`,
+      `No chitchat daemon at ${client.baseUrl}. ` +
+        `Run \`chitchat serve\` in another terminal.\n`,
     );
     process.exit(2);
   }

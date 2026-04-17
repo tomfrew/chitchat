@@ -2,5 +2,5 @@ node_modules
 dist
 *.log
 .DS_Store
-.chitterchatter-test-data
+.chitchat-test-data
 coverage

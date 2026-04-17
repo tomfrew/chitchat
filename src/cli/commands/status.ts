@@ -9,7 +9,7 @@ export async function runStatus(opts: { json?: boolean }): Promise<void> {
       return;
     }
     process.stdout.write(
-      `chitterchatter ${s.version} running at ${client.baseUrl} (uptime ${Math.round(s.uptime_ms / 1000)}s)\n`,
+      `chitchat ${s.version} running at ${client.baseUrl} (uptime ${Math.round(s.uptime_ms / 1000)}s)\n`,
     );
   } catch {
     if (opts.json) {

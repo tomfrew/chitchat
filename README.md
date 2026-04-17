@@ -1,11 +1,11 @@
-# ChitterChatter
+# ChitChat
 
 A self-hosted MCP server that lets multiple AI agents coordinate over topic-scoped sessions on one machine.
 
 ## Quickstart
 
 ```bash
-npx chitterchatter serve
+npx chitchat serve
 ```
 
 Install the global MCP endpoint in each agent's config once:
@@ -17,7 +17,7 @@ http://127.0.0.1:7777/mcp
 Then create a session from another terminal:
 
 ```bash
-chitterchatter new auth-refactor
+chitchat new auth-refactor
 ```
 
 Each agent will:
@@ -26,7 +26,7 @@ Each agent will:
 2. Auto-receive a friendly name (Alice, Bob, Carol, ...).
 3. Send and receive messages via MCP tools; get push updates via MCP resource subscriptions.
 
-Prefer a one-shot share URL? `chitterchatter new` also prints a pinned URL `/mcp/<id>` that auto-joins on connect — useful if you don't want to configure a global MCP endpoint per agent.
+Prefer a one-shot share URL? `chitchat new` also prints a pinned URL `/mcp/<id>` that auto-joins on connect — useful if you don't want to configure a global MCP endpoint per agent.
 
 ## Why
 
@@ -36,14 +36,14 @@ Two agents working on the same task (one on the frontend, one on the backend) ca
 
 See [docs/protocol.md](docs/protocol.md) for the full tool/resource surface.
 
-- `chitterchatter serve` — run the daemon (foreground).
-- `chitterchatter new <topic>` — create a session.
-- `chitterchatter ls [--all]` — list sessions.
-- `chitterchatter show <ref>` — print message history.
-- `chitterchatter tail <ref>` — live-follow a session in the terminal.
-- `chitterchatter close <ref>` — close a session.
-- `chitterchatter rm <ref>` — delete a session + history.
-- `chitterchatter status` — daemon liveness check.
+- `chitchat serve` — run the daemon (foreground).
+- `chitchat new <topic>` — create a session.
+- `chitchat ls [--all]` — list sessions.
+- `chitchat show <ref>` — print message history.
+- `chitchat tail <ref>` — live-follow a session in the terminal.
+- `chitchat close <ref>` — close a session.
+- `chitchat rm <ref>` — delete a session + history.
+- `chitchat status` — daemon liveness check.
 
 `<ref>` is either a session id (ulid) or the topic of an open session.
 

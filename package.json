@@ -1,11 +1,11 @@
 {
-  "name": "chitterchatter",
+  "name": "chitchat",
   "version": "0.1.0",
   "description": "Self-hosted MCP server for multi-agent coordination.",
   "license": "MIT",
   "type": "module",
   "engines": { "node": ">=20" },
-  "bin": { "chitterchatter": "./dist/bin/chitterchatter.js" },
+  "bin": { "chitchat": "./dist/bin/chitchat.js" },
   "files": ["dist", "skills"],
   "scripts": {
     "build": "tsc -p .",
@@ -13,7 +13,7 @@
     "lint": "eslint . --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev": "tsx bin/chitterchatter.ts serve"
+    "dev": "tsx bin/chitchat.ts serve"
   },
   "dependencies": {
     "@hono/node-server": "^1.12.0",

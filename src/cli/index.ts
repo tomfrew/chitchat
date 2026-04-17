@@ -11,7 +11,7 @@ import { runRm } from "./commands/rm.js";
 export function buildCli(): Command {
   const program = new Command();
   program
-    .name("chitterchatter")
+    .name("chitchat")
     .description("Self-hosted MCP server for multi-agent coordination.")
     .version("0.1.0");
 

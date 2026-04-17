@@ -26,14 +26,14 @@ describe("MCP resources", () => {
     const a = await connectMcp(srv.baseUrl, s.id);
     const list = await a.client.listResources();
     expect(list.resources.map((r) => r.uri).sort()).toEqual([
-      "chitterchatter://messages",
-      "chitterchatter://peers",
-      "chitterchatter://session",
-      "chitterchatter://skill",
+      "chitchat://messages",
+      "chitchat://peers",
+      "chitchat://session",
+      "chitchat://skill",
     ]);
-    const skill = await a.client.readResource({ uri: "chitterchatter://skill" });
+    const skill = await a.client.readResource({ uri: "chitchat://skill" });
     const text = (skill.contents[0] as { text: string }).text;
-    expect(text).toMatch(/ChitterChatter Agent Skill/);
+    expect(text).toMatch(/ChitChat Agent Skill/);
     await a.close();
   });
 
@@ -44,9 +44,9 @@ describe("MCP resources", () => {
 
     let updated = 0;
     b.client.setNotificationHandler(ResourceUpdatedNotificationSchema, async (n) => {
-      if (n.params.uri === "chitterchatter://messages") updated++;
+      if (n.params.uri === "chitchat://messages") updated++;
     });
-    await b.client.subscribeResource({ uri: "chitterchatter://messages" });
+    await b.client.subscribeResource({ uri: "chitchat://messages" });
 
     await call(a.client, "identify", { role: "r" });
     await call(b.client, "identify", { role: "r" });
