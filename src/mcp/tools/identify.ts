@@ -5,8 +5,11 @@ import {
   activeNamesInSession,
   createAgent,
   findAgentByPersistentId,
+  getAgent,
   listActiveAgents,
+  reviveAgent,
   setAgentCursor,
+  updateAgentRole,
 } from "../../storage/agents.js";
 import { getMessages, latestMessageId } from "../../storage/messages.js";
 import { getSession, getSessionByTopic } from "../../storage/sessions.js";
@@ -22,10 +25,10 @@ export const IDENTIFY_TOOL_DEF = {
   description:
     "Register with a session. Must be called before any messaging tools become available.\n\n" +
     "Args:\n" +
-    "- `role` (required): your team role in ONE short phrase. Think Slack status, not turn narration. Good: 'frontend on the auth refactor', 'backend — API + migrations', 'QA on MCP surface', 'docs + DX'. Bad: 'verifying the fix works', 'observing and will assist', 'reconnected after restart'. See the agent skill for examples.\n" +
+    "- `role` (required): your team role in ONE short phrase. Think Slack status, not turn narration. Good: 'frontend on the auth refactor', 'backend — API + migrations', 'QA on MCP surface', 'docs + DX'. Bad: 'verifying the fix works', 'observing and will assist', 'reconnected after restart'.\n" +
     "- `session`: topic name or session id to join. Omit only if the MCP URL already pinned a session.\n" +
-    "- `persistent_id` (optional but strongly recommended): an opaque string that identifies YOU across reconnects. Generate it once (e.g. a UUID you save to memory), then pass the same value on every identify. If a prior agent in this session used the same persistent_id, you get that same friendly name back instead of a fresh one — so peers don't see you flip from Bob to Alice on reconnect.\n\n" +
-    "Returns: `{ agent_id, session_id, name, peers, recent_messages, cursor }`.",
+    "- `persistent_id` (strongly recommended): an opaque string that identifies YOU across reconnects. Reusing the same value on reconnect gets you the SAME agent row back — same friendly name, same read cursor, no duplicate peer_join — so peers don't see you churn if your MCP transport drops.\n\n" +
+    "Returns: `{ agent_id, session_id, name, reclaim, peers, recent_messages, cursor }`. `reclaim` is 'none' (fresh join), 'revived' (had called leave before), or 'reused' (prior session still considered active — this is the transport-reconnect case).",
   inputSchema: {
     type: "object",
     properties: {
@@ -47,7 +50,7 @@ export const IDENTIFY_TOOL_DEF = {
         minLength: 1,
         maxLength: 200,
         description:
-          "Opaque self-chosen id for name reclaim across reconnects. Save it in your memory and reuse it.",
+          "Opaque self-chosen id. Use the same value on every identify — server reuses your prior agent row, so your name/cursor/history survive transport drops.",
       },
     },
     required: ["role"],
@@ -91,27 +94,45 @@ export function buildIdentifyTool(
       );
     }
 
-    const taken = activeNamesInSession(deps.db, sessionId);
-    if (taken.length >= NAME_POOL.length * 50) throw new Error("Session is too full.");
+    let agent: NonNullable<ReturnType<typeof getAgent>>;
+    let reclaim: "none" | "reused" | "revived" = "none";
+    let emitPeerJoin = true;
 
-    // Name reclaim via persistent_id: look up prior record, prefer that name.
-    let preferName: string | undefined;
-    if (persistent_id) {
-      const prior = findAgentByPersistentId(deps.db, sessionId, persistent_id);
-      if (prior) preferName = prior.name;
+    const prior = persistent_id
+      ? findAgentByPersistentId(deps.db, sessionId, persistent_id)
+      : undefined;
+
+    if (prior && prior.left_at === null) {
+      // Transport reconnect — prior MCP session's transport died but its row is
+      // still active. Reuse it: same agent_id, same name, same cursor, peers
+      // see no churn because from their POV we never left.
+      if (prior.role !== role) updateAgentRole(deps.db, prior.id, role);
+      agent = { ...prior, role };
+      reclaim = "reused";
+      emitPeerJoin = false;
+    } else if (prior && prior.left_at !== null) {
+      // Had left cleanly (or was marked left), now coming back. Revive the
+      // same row — preserves cursor so they catch up on anything missed.
+      reviveAgent(deps.db, prior.id, role);
+      agent = { ...prior, role, left_at: null };
+      reclaim = "revived";
+    } else {
+      // First time this persistent_id is seen in this session (or no id given).
+      const taken = activeNamesInSession(deps.db, sessionId);
+      if (taken.length >= NAME_POOL.length * 50) throw new Error("Session is too full.");
+      const name = pickName(taken, { seed: sessionId });
+      agent = createAgent(deps.db, {
+        session_id: sessionId,
+        name,
+        role,
+        persistent_id: persistent_id ?? null,
+      });
+      const latest = latestMessageId(deps.db, sessionId);
+      if (latest) {
+        setAgentCursor(deps.db, agent.id, latest);
+        agent = { ...agent, last_cursor: latest };
+      }
     }
-
-    const name = pickName(taken, { seed: sessionId, prefer: preferName });
-
-    const agent = createAgent(deps.db, {
-      session_id: sessionId,
-      name,
-      role,
-      persistent_id: persistent_id ?? null,
-    });
-
-    const latest = latestMessageId(deps.db, sessionId);
-    if (latest) setAgentCursor(deps.db, agent.id, latest);
 
     state.sessionId = sessionId;
     state.agentId = agent.id;
@@ -139,12 +160,22 @@ export function buildIdentifyTool(
         ts: m.created_at,
       }));
 
-    deps.hub.publish({
-      type: "peer_join",
-      session_id: sessionId,
-      name: agent.name,
-      role: agent.role,
-    });
+    if (emitPeerJoin) {
+      deps.hub.publish({
+        type: "peer_join",
+        session_id: sessionId,
+        name: agent.name,
+        role: agent.role,
+      });
+    } else if (prior && prior.role !== role) {
+      // Silent reuse, but we did change the role — let peers see that.
+      deps.hub.publish({
+        type: "role_changed",
+        session_id: sessionId,
+        name: agent.name,
+        role,
+      });
+    }
 
     await notifyToolListChanged();
 
@@ -156,10 +187,10 @@ export function buildIdentifyTool(
             agent_id: agent.id,
             session_id: sessionId,
             name: agent.name,
-            name_reclaimed: preferName === agent.name,
+            reclaim,
             peers,
             recent_messages: recent,
-            cursor: latest ?? "",
+            cursor: agent.last_cursor ?? "",
           }),
         },
       ],

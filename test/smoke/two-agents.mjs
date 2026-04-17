@@ -91,7 +91,7 @@ async function main() {
     persistent_id: "smoke-alice",
   });
   await assertDeep("rejoin reclaims original name via persistent_id", meA2.name, aliceName);
-  await assertDeep("name_reclaimed flag set", meA2.name_reclaimed, true);
+  await assert("reclaim flag is set (reused or revived)", meA2.reclaim === "reused" || meA2.reclaim === "revived");
 
   await alice.close();
   await bob.close();

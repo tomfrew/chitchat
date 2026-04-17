@@ -85,6 +85,16 @@ export function setAgentCursor(db: Db, id: string, cursor: string): void {
   db.prepare("UPDATE agents SET last_cursor = ? WHERE id = ?").run(cursor, id);
 }
 
+/**
+ * Clear left_at and update role in one step. Used when an agent reconnects
+ * with a persistent_id that matches a prior record in this session — we want
+ * to reuse the same agent row (and therefore the same name + cursor) rather
+ * than allocate a new one.
+ */
+export function reviveAgent(db: Db, id: string, role: string): void {
+  db.prepare("UPDATE agents SET left_at = NULL, role = ? WHERE id = ?").run(role, id);
+}
+
 export function activeNamesInSession(db: Db, sessionId: string): string[] {
   return db
     .prepare<[string], { name: string }>(
