@@ -50,10 +50,11 @@ export function runTui(rt: Runtime): Promise<void> {
     });
 
     // --- Messages pane (right) ---
-    // padding.right reserves a column so wrapped lines don't bleed into the
-    // scrollbar track — otherwise blessed leaves text artifacts where the
-    // bar was drawn on the previous frame.
-    const messagesBox = blessed.log({
+    // Each message renders as a 2-line preview (header + single body line)
+    // with a blank separator. Selection is tracked manually so the whole
+    // item highlights — blessed.list only supports single-line items, so
+    // we drive a blessed.box ourselves.
+    const messagesBox = blessed.box({
       parent: screen,
       label: " messages ",
       top: 0,
@@ -72,7 +73,7 @@ export function runTui(rt: Runtime): Promise<void> {
       vi: false,
       mouse: true,
       tags: true,
-      wrap: true,
+      wrap: false,
       scrollbar: {
         ch: " ",
         track: { bg: "black" },
@@ -153,22 +154,54 @@ export function runTui(rt: Runtime): Promise<void> {
       screen.render();
     }
 
+    const LINES_PER_ITEM = 3; // header, body preview, separator
+
     function renderMessages() {
-      messagesBox.setContent("");
       if (currentMessages.length === 0) {
-        messagesBox.add("{gray-fg}(no messages yet){/}");
+        messagesBox.setContent("{gray-fg}(no messages yet){/}");
         return;
       }
-      for (const m of currentMessages) {
+      // Clamp selection if list shrank or grew.
+      messageSelection = Math.max(0, Math.min(messageSelection, currentMessages.length - 1));
+
+      const previewWidth = Math.max(
+        20,
+        ((messagesBox.width as number) || 80) - 6, // border + padding
+      );
+      const lines: string[] = [];
+      for (let i = 0; i < currentMessages.length; i++) {
+        const m = currentMessages[i];
+        const selected = i === messageSelection;
         const ts = new Date(m.created_at).toISOString().slice(11, 19);
         const from = m.sender_name ?? "system";
-        const role = m.sender_role ? ` {gray-fg}(${truncate(m.sender_role, 32)}){/}` : "";
-        const meta = m.meta && Object.keys(m.meta).length > 0 ? " {gray-fg}[meta]{/}" : "";
-        messagesBox.add(
-          `{gray-fg}${ts}{/} {cyan-fg}${from}{/}${role}${meta}\n${indent(m.body, 2)}\n`,
-        );
+        const role = m.sender_role ? ` (${truncate(m.sender_role, 24)})` : "";
+        const meta = m.meta && Object.keys(m.meta).length > 0 ? " [meta]" : "";
+        const preview = oneLine(m.body, previewWidth - 2);
+
+        const header = selected
+          ? `{inverse}{bold}▌ ${ts}  ${from}${role}${meta}{/bold}{/inverse}`
+          : `{gray-fg}${ts}{/}  {cyan-fg}${from}{/}{gray-fg}${role}${meta}{/}`;
+        const body = selected
+          ? `{inverse}  ${preview}{/inverse}`
+          : `  ${preview}`;
+
+        lines.push(header);
+        lines.push(body);
+        lines.push("");
       }
-      (messagesBox as blessed.Widgets.Log).setScrollPerc(100);
+      messagesBox.setContent(lines.join("\n"));
+      scrollToSelection();
+    }
+
+    function scrollToSelection() {
+      const viewportH = (messagesBox.height as number) - 2;
+      const top = messageSelection * LINES_PER_ITEM;
+      // Keep the selected item ~1/3 from the top of the viewport.
+      const desiredScroll = Math.max(0, top - Math.floor(viewportH / 3));
+      (messagesBox as unknown as { setScroll: (n: number) => void }).setScroll(
+        desiredScroll,
+      );
+      screen.render();
     }
 
     let hubUnsub: (() => void) | null = null;
@@ -284,6 +317,34 @@ export function runTui(rt: Runtime): Promise<void> {
       if (s) selectSession(s.id);
     });
 
+    messagesBox.key(["up", "k"], () => {
+      if (messageSelection > 0) {
+        messageSelection--;
+        renderMessages();
+      }
+    });
+    messagesBox.key(["down", "j"], () => {
+      if (messageSelection < currentMessages.length - 1) {
+        messageSelection++;
+        renderMessages();
+      }
+    });
+    messagesBox.key(["pageup"], () => {
+      messageSelection = Math.max(0, messageSelection - 5);
+      renderMessages();
+    });
+    messagesBox.key(["pagedown"], () => {
+      messageSelection = Math.min(currentMessages.length - 1, messageSelection + 5);
+      renderMessages();
+    });
+    messagesBox.key("g", () => {
+      messageSelection = 0;
+      renderMessages();
+    });
+    messagesBox.key("G", () => {
+      messageSelection = currentMessages.length - 1;
+      renderMessages();
+    });
     messagesBox.key("enter", showDetail);
     detailBox.key(["escape", "enter", "q"], hideDetail);
 
@@ -309,10 +370,7 @@ function truncate(s: string, n: number): string {
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
 }
 
-function indent(s: string, n: number): string {
-  const pad = " ".repeat(n);
-  return s
-    .split("\n")
-    .map((l) => pad + l)
-    .join("\n");
+function oneLine(s: string, n: number): string {
+  const flat = s.replace(/\s+/g, " ").trim();
+  return truncate(flat, n);
 }
