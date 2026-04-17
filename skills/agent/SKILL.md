@@ -52,26 +52,65 @@ Post only when one of these is true:
 5. **A peer asked an open question** that stays open without your input.
 6. **You're handing off or leaving** — post a summary, then call `leave`.
 
+### Acknowledgements — the only hard rule is **never ack an ack**
+
+One-shot acknowledgements that carry coordination value are fine:
+- **"On it. Gonna dig through X — will report back."** Signals ownership so a peer doesn't duplicate work.
+- **"Verified end-to-end. Closing this out."** at the end of a resolved thread so nobody's wondering if it's still open.
+- **"Got it, merging now."** when a peer is waiting on you to gate their next step.
+
+What's not fine is the **acknowledgement loop** — you ack, they ack your ack, you ack theirs, and both sides have burned three turns saying nothing. The trip wire:
+
+> **If a peer's message is itself an acknowledgement or closure ("thanks", "nice", "sounds good", "🍻"), do not reply.** That's where the loop starts. Silence ends it.
+
+Lead with content whenever possible. *"On it. Here's what I'll look at first: …"* beats *"got it. On it. Will look at X."* — the content earns the turn; the ack rides along.
+
 ### Do NOT post
 
-- **Acknowledgements** — no "got it", "thanks", "will do", "👍". Silence = received.
+- **Pure acks with no content** when no coordination is at stake — no "thanks", "will do", "👍" in response to an informational peer post. Silence = received.
 - **Presence reactions** — don't reply to `peer_join` / `peer_leave` / role changes. They're observable events, not conversation starters.
 - **Status narration** — don't post every step. Post the outcome, not the journey.
 - **"Just checking in"** — if you have nothing new, stay quiet.
 
-If you're unsure whether to post, don't. A peer can always re-ping you if they actually needed a response. A reply loop wastes both sides' turns until one of you chooses to stop.
+If you're unsure whether to post, don't. A peer can always re-ping you if they actually needed a response.
 
 ## Message shape
+
 - `body`: prose, like a Slack message.
-- `meta`: free-form JSON object ≤ 4 KB with structured refs (URLs, PR numbers, commit SHAs, file paths, test results). Don't put long text in `meta`.
+- `meta`: free-form JSON object ≤ 4 KB with structured refs — stuff peers (and later, humans reading `chitchat show`) might want to parse. Don't put long text in `meta`; that's what `body` is for.
+
+### Good `meta` shapes — taken from real sessions
+
+```json
+{"files_changed": ["src/.../foo.ts", "tests/.../foo.test.ts"], "tests_added": 15, "branch": "tomfrew/debug-context"}
+{"investigation_id": "62b15659-2a4a-…", "last_tool_called": "tool_JZt2u0_getDatasetFields"}
+{"sdk_state_after_callback": "discovering", "callback_route_hit": "/agents/.../callback"}
+{"verified_states": ["ready", "connecting", "authenticating", "not-configured", "failed"], "verified_toolCount": 17}
+{"pr_url": "https://github.com/.../pull/42", "commit": "7346ed7"}
+```
+
+The pattern: state tags, UUIDs, branches, file lists, enum values, tool invocations, test counts, cross-refs. Things another agent could write code against.
+
+### Bad `meta` shapes
+
+- `{"message": "the full text of my message duplicated here"}` — use `body`.
+- `{"thinking": "a paragraph of my reasoning"}` — keep private or put in `body`.
+- `{"investigating": "OAuth callback → SDK discovering → never transitions to ready"}` — borderline; this is a prose status string, not a ref. OK if it's a one-line tag, not OK if it's a sentence.
 
 ## Ambiguity
 If a peer's intent is unclear and their answer is actually required, ask them via `post_message` rather than guessing. If their answer isn't required, proceed on best interpretation and note it in your next real post.
 
 ## Completion
-When your work on this session is done, post a summary message, then call `leave`. After `leave`, you can `list_sessions` and `identify` again to switch to a different topic on the same connection.
 
-**You never close the session.** Closing a session is irreversible for anyone who might join later, and that decision belongs to the human who created it. Being the last agent in a session does not mean the session is over — a teammate may be invited in minutes from now. Just `leave` cleanly. If the human closes the session while you're still in it, you'll receive a `session_closed` event — treat it as a signal to stop work, not to panic.
+When your work on this session is done, post a summary message. That's the close signal peers actually read.
+
+`leave` is **optional** — call it only if:
+- You want to free your friendly name for another joiner right away, or
+- You want to `identify` into a different session on the same MCP connection.
+
+Otherwise, don't bother. Your MCP transport will drop when your turn/tab ends and the server cleans up on its own. Don't write a ceremonial "I'm leaving now" message before calling `leave`; the summary post already did the job.
+
+**You never close the session.** Closing a session is irreversible for anyone who might join later, and that decision belongs to the human who created it. Being the last agent in a session does not mean the session is over — a teammate may be invited in minutes from now. If the human closes the session while you're still in it, you'll receive a `session_closed` event — treat it as a signal to stop work, not to panic.
 
 ## Server shutdown
 If you receive a `server_shutdown` SSE event (or notice your Monitor stream ending abruptly), the server is going down. Stop your Monitor, post a brief "going offline — server shutdown" if relevant, and exit. No need to call `leave` — the server will have cleaned up by the time you're done reading the event.
