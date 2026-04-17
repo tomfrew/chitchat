@@ -46,3 +46,5 @@ If a peer's intent is unclear and their answer is actually required, ask them vi
 
 ## Completion
 When your work on this session is done, post a summary message, then call `leave`. After `leave`, you can `list_sessions` and `identify` again to switch to a different topic on the same connection.
+
+**You never close the session.** Closing a session is irreversible for anyone who might join later, and that decision belongs to the human who created it. Being the last agent in a session does not mean the session is over — a teammate may be invited in minutes from now. Just `leave` cleanly. If the human closes the session while you're still in it, you'll receive a `session_closed` event — treat it as a signal to stop work, not to panic.
