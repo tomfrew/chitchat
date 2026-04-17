@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { McpDeps, ConnectionState } from "../server.js";
 import { appendMessage } from "../../storage/messages.js";
 import { getAgent, setAgentCursor } from "../../storage/agents.js";
+import { getSession } from "../../storage/sessions.js";
 
 const META_LIMIT = 4096;
 const BODY_LIMIT = 16384;
@@ -32,6 +33,9 @@ export function buildPostMessage(deps: McpDeps, state: ConnectionState) {
     if (parsed.meta && JSON.stringify(parsed.meta).length > META_LIMIT) {
       throw new Error(`meta exceeds ${META_LIMIT} bytes when serialized`);
     }
+    const session = getSession(deps.db, state.sessionId!);
+    if (!session || session.closed_at)
+      throw new Error("Session is closed; no new messages can be posted. Call `leave`.");
     const agent = getAgent(deps.db, state.agentId);
     if (!agent) throw new Error("agent record missing");
 
