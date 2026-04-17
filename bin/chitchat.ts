@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { buildCli } from "../src/cli/index.js";
 
 buildCli()

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { SessionHub } from "../../../src/hub/session-hub.js";
 import type { HubEvent } from "../../../src/hub/events.js";
 import type { MessageRow } from "../../../src/storage/messages.js";

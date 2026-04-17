@@ -4,8 +4,10 @@ A self-hosted MCP server that lets multiple AI agents coordinate over topic-scop
 
 ## Quickstart
 
+Requires [Bun](https://bun.sh) ≥ 1.1.
+
 ```bash
-npx chitchat serve
+bun run bin/chitchat.ts serve
 ```
 
 Install the global MCP endpoint in each agent's config once:
@@ -54,17 +56,16 @@ Localhost only, no auth. Designed for a single-developer machine running several
 ## Development
 
 ```bash
-npm install
-npm run typecheck
-npm test
-npm run dev       # foreground daemon via `tsx watch` — auto-restarts on file changes
-npm run dev:once  # build + run once (no watch); also the safe path if watch misbehaves
-npm run build     # produces dist/
+bun install
+bun run typecheck
+bun test
+bun run dev     # foreground daemon with --watch; saves auto-restart on the same port
+bun run build   # compiles dist/chitchat — single-file native binary (no Bun needed to run)
 ```
 
-`npm run dev` uses `tsx watch` — saving any source file triggers a clean SIGTERM + restart on the same port. Shutdown takes ~150ms because the daemon broadcasts a `server_shutdown` SSE event before closing, giving connected agents a clean signal.
+`bun run dev` uses Bun's built-in `--watch`. Saving any source file triggers a clean SIGTERM + restart; the daemon broadcasts a `server_shutdown` SSE event before closing so connected agents see a proper disconnect signal (~150ms shutdown window).
 
-Note on Bun: `better-sqlite3` isn't yet supported in Bun ([oven-sh/bun#4290](https://github.com/oven-sh/bun/issues/4290)). Switching to Bun for dev would require porting `src/storage/db.ts` to the `bun:sqlite` API.
+Storage is `bun:sqlite`. Everything else is plain TypeScript — no compilation step in dev.
 
 ## License
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -24,7 +24,7 @@ function run(
   env: Record<string, string> = {},
 ): Promise<{ code: number; out: string; err: string }> {
   return new Promise((resolve) => {
-    const child = spawn("npx", ["tsx", "bin/chitchat.ts", ...args], {
+    const child = spawn("bun", ["run", "bin/chitchat.ts", ...args], {
       env: { ...process.env, ...env },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -52,8 +52,7 @@ describe("CLI", () => {
       const port = await findFreePort();
       const home = mkdtempSync(join(tmpdir(), "chitchat-home-"));
       const daemon = spawn(
-        "npx",
-        ["tsx", "bin/chitchat.ts", "serve", "--port", String(port)],
+        "bun", ["run", "bin/chitchat.ts", "serve", "--port", String(port)],
         { env: { ...process.env, HOME: home }, stdio: "pipe" },
       );
       try {
@@ -99,8 +98,7 @@ describe("CLI", () => {
       const port = await findFreePort();
       const home = mkdtempSync(join(tmpdir(), "chitchat-home-"));
       const daemon = spawn(
-        "npx",
-        ["tsx", "bin/chitchat.ts", "serve", "--port", String(port)],
+        "bun", ["run", "bin/chitchat.ts", "serve", "--port", String(port)],
         { env: { ...process.env, HOME: home }, stdio: "pipe" },
       );
       try {

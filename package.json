@@ -4,35 +4,31 @@
   "description": "Self-hosted MCP server for multi-agent coordination.",
   "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=20" },
-  "bin": { "chitchat": "./dist/bin/chitchat.js" },
-  "files": ["dist", "skills"],
+  "engines": { "bun": ">=1.1" },
+  "bin": { "chitchat": "./bin/chitchat.ts" },
+  "files": ["bin", "src", "skills", "tsconfig.json"],
   "scripts": {
-    "build": "tsc -p . && chmod +x dist/bin/chitchat.js",
+    "dev": "bun --watch run bin/chitchat.ts serve",
+    "start": "bun run bin/chitchat.ts serve",
     "typecheck": "tsc -p . --noEmit",
-    "lint": "eslint . --ext .ts",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "dev": "tsx watch --clear-screen=false bin/chitchat.ts serve",
-    "dev:once": "tsc -p . && node dist/bin/chitchat.js serve"
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "build": "bun build bin/chitchat.ts --compile --target=bun --outfile dist/chitchat"
   },
   "dependencies": {
     "@hono/node-server": "^1.12.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "better-sqlite3": "^11.0.0",
     "commander": "^12.0.0",
     "hono": "^4.6.0",
     "ulid": "^2.3.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.0",
+    "@types/bun": "^1.1.0",
     "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.0.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.6.0",
-    "vitest": "^2.0.0"
+    "typescript": "^5.6.0"
   }
 }

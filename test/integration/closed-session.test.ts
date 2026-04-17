@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect } from "bun:test";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { startTempServer, type TempServer } from "../helpers/temp-server.js";
 import { createSession, closeSession } from "../../src/storage/sessions.js";

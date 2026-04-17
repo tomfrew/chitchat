@@ -1,11 +1,10 @@
+import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
 /**
- * Minimal Statement / Database interface covering the subset used by the
- * storage layer. Intentionally loose on the param/row type parameters so the
- * same code path compiles under both better-sqlite3 and bun:sqlite, whose
- * generic shapes differ.
+ * Minimal Statement / Database surface the rest of storage/ depends on.
+ * Loose generics so SQL row types stay the source of truth.
  */
 export interface Statement<R = unknown> {
   run(...args: unknown[]): { changes: number; lastInsertRowid: number | bigint };
@@ -19,94 +18,81 @@ export interface Db {
   close(): void;
 }
 
-/**
- * Pick the SQLite driver at module load based on runtime. Bun ships bun:sqlite
- * natively and doesn't support the better-sqlite3 native binary. Node uses
- * better-sqlite3. The driver APIs we touch — prepare, exec, run/get/all with
- * @named or ? params — are compatible across both.
- */
-const DatabaseImpl: new (path: string) => Db = await (async () => {
-  const isBun = typeof (globalThis as { Bun?: unknown }).Bun !== "undefined";
-  if (isBun) {
-    // @ts-expect-error bun:sqlite is resolved by Bun at runtime only.
-    const mod = await import("bun:sqlite");
-    return mod.Database as unknown as new (path: string) => Db;
-  }
-  const mod = await import("better-sqlite3");
-  return mod.default as unknown as new (path: string) => Db;
-})();
+const SCHEMA = `
+CREATE TABLE IF NOT EXISTS sessions (
+  id           TEXT PRIMARY KEY,
+  topic        TEXT NOT NULL,
+  description  TEXT,
+  created_at   INTEGER NOT NULL,
+  closed_at    INTEGER
+);
+CREATE UNIQUE INDEX IF NOT EXISTS sessions_topic_open
+  ON sessions(topic) WHERE closed_at IS NULL;
 
-const MIGRATIONS: string[] = [
-  `CREATE TABLE sessions (
-    id           TEXT PRIMARY KEY,
-    topic        TEXT NOT NULL,
-    description  TEXT,
-    created_at   INTEGER NOT NULL,
-    closed_at    INTEGER
-  );
-  CREATE UNIQUE INDEX sessions_topic_open
-    ON sessions(topic) WHERE closed_at IS NULL;`,
-  `CREATE TABLE agents (
-    id           TEXT PRIMARY KEY,
-    session_id   TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    name         TEXT NOT NULL,
-    role         TEXT NOT NULL,
-    joined_at    INTEGER NOT NULL,
-    left_at      INTEGER,
-    last_cursor  TEXT
-  );
-  CREATE UNIQUE INDEX agents_session_name_active
-    ON agents(session_id, name) WHERE left_at IS NULL;`,
-  `CREATE TABLE messages (
-    id          TEXT PRIMARY KEY,
-    session_id  TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    agent_id    TEXT REFERENCES agents(id),
-    kind        TEXT NOT NULL CHECK (kind IN ('chat','system')),
-    body        TEXT NOT NULL,
-    meta        TEXT,
-    created_at  INTEGER NOT NULL
-  );
-  CREATE INDEX messages_session_id ON messages(session_id, id);`,
-  `ALTER TABLE messages ADD COLUMN sender_role TEXT;`,
-  `ALTER TABLE agents ADD COLUMN persistent_id TEXT;
-   CREATE INDEX agents_session_persistent_id
-     ON agents(session_id, persistent_id) WHERE persistent_id IS NOT NULL;`,
-];
+CREATE TABLE IF NOT EXISTS agents (
+  id             TEXT PRIMARY KEY,
+  session_id     TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  name           TEXT NOT NULL,
+  role           TEXT NOT NULL,
+  joined_at      INTEGER NOT NULL,
+  left_at        INTEGER,
+  last_cursor    TEXT,
+  persistent_id  TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS agents_session_name_active
+  ON agents(session_id, name) WHERE left_at IS NULL;
+CREATE INDEX IF NOT EXISTS agents_session_persistent_id
+  ON agents(session_id, persistent_id) WHERE persistent_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS messages (
+  id           TEXT PRIMARY KEY,
+  session_id   TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  agent_id     TEXT REFERENCES agents(id),
+  kind         TEXT NOT NULL CHECK (kind IN ('chat','system')),
+  body         TEXT NOT NULL,
+  meta         TEXT,
+  created_at   INTEGER NOT NULL,
+  sender_role  TEXT
+);
+CREATE INDEX IF NOT EXISTS messages_session_id ON messages(session_id, id);
+`;
+
+/**
+ * bun:sqlite resolves `@name` / `$name` placeholders by looking up *prefixed*
+ * keys on the bind object (e.g. `{ "@name": "x" }`), where better-sqlite3
+ * accepted plain keys (`{ name: "x" }`). We normalize by adding `@` prefixes
+ * to plain object keys at bind time so the rest of the storage layer can
+ * write idiomatic row objects.
+ */
+function prefixKeys(arg: unknown): unknown {
+  if (arg === null || typeof arg !== "object" || Array.isArray(arg)) return arg;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(arg as Record<string, unknown>)) {
+    out[k.startsWith("@") || k.startsWith("$") || k.startsWith(":") ? k : `@${k}`] = v;
+  }
+  return out;
+}
+
+function wrapDatabase(raw: InstanceType<typeof Database>): Db {
+  return {
+    prepare<P extends unknown[] = unknown[], R = unknown>(sql: string): Statement<R> {
+      const stmt = raw.prepare(sql);
+      return {
+        run: (...args: unknown[]) => stmt.run(...(args.map(prefixKeys) as never[])),
+        get: (...args: unknown[]) => stmt.get(...(args.map(prefixKeys) as never[])) as R | null ?? undefined,
+        all: (...args: unknown[]) => stmt.all(...(args.map(prefixKeys) as never[])) as R[],
+      };
+    },
+    exec: (sql: string) => raw.exec(sql),
+    close: () => raw.close(),
+  };
+}
 
 export function openDatabase(path: string): Db {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
-  const db = new DatabaseImpl(path);
-  // PRAGMAs via exec work on both drivers; better-sqlite3's db.pragma helper
-  // doesn't exist on bun:sqlite.
-  db.exec("PRAGMA journal_mode = WAL");
-  db.exec("PRAGMA foreign_keys = ON");
-  runMigrations(db);
-  return db;
-}
-
-function runMigrations(db: Db): void {
-  db.exec(`CREATE TABLE IF NOT EXISTS migrations (
-    version INTEGER PRIMARY KEY,
-    applied_at INTEGER NOT NULL
-  )`);
-  const applied = new Set(
-    db
-      .prepare<[], { version: number }>("SELECT version FROM migrations")
-      .all()
-      .map((r) => r.version),
-  );
-  const insert = db.prepare("INSERT INTO migrations (version, applied_at) VALUES (?, ?)");
-  for (let i = 0; i < MIGRATIONS.length; i++) {
-    const v = i + 1;
-    if (applied.has(v)) continue;
-    db.exec("BEGIN");
-    try {
-      db.exec(MIGRATIONS[i]);
-      insert.run(v, Date.now());
-      db.exec("COMMIT");
-    } catch (err) {
-      db.exec("ROLLBACK");
-      throw err;
-    }
-  }
+  const raw = new Database(path);
+  raw.exec("PRAGMA journal_mode = WAL");
+  raw.exec("PRAGMA foreign_keys = ON");
+  raw.exec(SCHEMA);
+  return wrapDatabase(raw);
 }

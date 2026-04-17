@@ -1,0 +1,3 @@
+[test]
+# Only the handwritten specs under test/ — avoid picking up anything in dist/.
+root = "test"

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect } from "bun:test";
 import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { startTempServer, type TempServer } from "../helpers/temp-server.js";
 import { createSession } from "../../src/storage/sessions.js";

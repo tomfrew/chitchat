@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { parseSkill, composeInstructions } from "../../src/mcp/skill-loader.js";
 
 const SAMPLE = `# ChitChat Agent Skill

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -24,8 +24,8 @@ describe("graceful shutdown", () => {
     const port = await findFreePort();
     const home = mkdtempSync(join(tmpdir(), "chitchat-shutdown-"));
     const daemon = spawn(
-      "node",
-      ["dist/bin/chitchat.js", "serve", "--port", String(port)],
+      "bun",
+      ["run", "bin/chitchat.ts", "serve", "--port", String(port)],
       { env: { ...process.env, HOME: home }, stdio: "pipe" },
     );
     try {

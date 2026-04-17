@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "bun:test";
 import { openDatabase } from "../../../src/storage/db.js";
 import { createSession } from "../../../src/storage/sessions.js";
 import {

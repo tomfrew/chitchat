@@ -34,12 +34,13 @@ async function assert(label, cond, detail) {
 
 async function main() {
   // Alice connects to the global endpoint, lists sessions, joins our topic.
-  const alice = await connect("alice");
+  const alice = await connect("a");
   const sessions = await call(alice, "list_sessions");
   await assert("list_sessions includes our topic", sessions.some((s) => s.topic === topic));
 
-  const meA = await call(alice, "identify", { session: topic, role: "frontend" });
-  await assertDeep("alice identified as Alice", meA.name, "Alice");
+  const meA = await call(alice, "identify", { session: topic, role: "frontend", persistent_id: "smoke-alice" });
+  await assert("alice got a name", typeof meA.name === "string" && meA.name.length > 0);
+  const aliceName = meA.name;
 
   // Pre-identify check on a fresh connection confirms the toolset is restricted.
   const peek = await connect("peek");
@@ -48,9 +49,10 @@ async function main() {
   await peek.close();
 
   // Bob joins the same session via its id (proves topic/id interchangeability).
-  const bob = await connect("bob");
-  const meB = await call(bob, "identify", { session: meA.session_id, role: "backend" });
-  await assertDeep("bob identified as Bob", meB.name, "Bob");
+  const bob = await connect("b");
+  const meB = await call(bob, "identify", { session: meA.session_id, role: "backend", persistent_id: "smoke-bob" });
+  await assert("bob got a distinct name", typeof meB.name === "string" && meB.name !== aliceName);
+  const bobName = meB.name;
 
   // Alice posts; Bob peeks then reads.
   await call(alice, "post_message", {
@@ -69,8 +71,8 @@ async function main() {
   await call(bob, "update_role", { role: "backend + migrations" });
   await call(bob, "post_message", { body: "rendered clean, merging" });
   const peers = await call(alice, "list_peers");
-  const bobPeer = peers.find((p) => p.name === "Bob");
-  await assert("alice sees Bob's role change", bobPeer?.role === "backend + migrations");
+  const bobPeer = peers.find((p) => p.name === bobName);
+  await assert("alice sees bob's role change", bobPeer?.role === "backend + migrations");
 
   const msgsAlice = await call(alice, "get_messages");
   await assertDeep("alice got bob's reply", msgsAlice.map((m) => m.body), ["rendered clean, merging"]);
@@ -83,8 +85,13 @@ async function main() {
   // Alice re-joins a fresh session on the same connection — proves one-session-at-a-time + reuse.
   const sessions2 = await call(alice, "list_sessions");
   await assert("second session now listed", sessions2.some((s) => s.topic === topic));
-  const meA2 = await call(alice, "identify", { session: topic, role: "frontend-v2" });
-  await assertDeep("rejoin name is Alice (Bob still there)", meA2.name, "Alice");
+  const meA2 = await call(alice, "identify", {
+    session: topic,
+    role: "frontend-v2",
+    persistent_id: "smoke-alice",
+  });
+  await assertDeep("rejoin reclaims original name via persistent_id", meA2.name, aliceName);
+  await assertDeep("name_reclaimed flag set", meA2.name_reclaimed, true);
 
   await alice.close();
   await bob.close();

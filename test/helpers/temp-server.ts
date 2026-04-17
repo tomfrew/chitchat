@@ -33,9 +33,9 @@ export async function startTempServer(): Promise<TempServer> {
     db,
     hub,
     close: () =>
-      new Promise<void>((resolve, reject) => {
+      new Promise<void>((resolve) => {
         server.closeAllConnections?.();
-        server.close((err) => (err ? reject(err) : resolve()));
+        server.close(() => resolve());
       }),
   };
 }

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect } from "bun:test";
 import { startTempServer, type TempServer } from "../helpers/temp-server.js";
 
 describe("REST sessions", () => {
