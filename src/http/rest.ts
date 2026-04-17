@@ -9,7 +9,7 @@ import {
   deleteSession,
 } from "../storage/sessions.js";
 import { listActiveAgents } from "../storage/agents.js";
-import { countMessagesAfter } from "../storage/messages.js";
+import { countMessagesAfter, getMessagesWithSender } from "../storage/messages.js";
 
 const createSchema = z.object({
   topic: z.string().min(1).max(200),
@@ -65,6 +65,31 @@ export function restRoutes(deps: AppDeps): Hono {
     const id = c.req.param("id");
     deleteSession(deps.db, id);
     return c.body(null, 204);
+  });
+
+  r.get("/sessions/:id/messages", (c) => {
+    const id = c.req.param("id");
+    if (!getSession(deps.db, id)) return c.json({ error: "not found" }, 404);
+    const since = c.req.query("since");
+    const before = c.req.query("before");
+    const limitRaw = c.req.query("limit");
+    const limit = limitRaw ? Number(limitRaw) : undefined;
+    const opts = {
+      since: since || undefined,
+      before: before || undefined,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    };
+    return c.json({
+      messages: getMessagesWithSender(deps.db, id, opts).map((m) => ({
+        id: m.id,
+        from: m.sender_name,
+        role: m.sender_role,
+        body: m.body,
+        meta: m.meta,
+        ts: m.created_at,
+        kind: m.kind,
+      })),
+    });
   });
 
   return r;

@@ -47,6 +47,53 @@ describe("CLI", () => {
   });
 
   it(
+    "serve boots; new/show/close/rm lifecycle works",
+    async () => {
+      const port = await findFreePort();
+      const home = mkdtempSync(join(tmpdir(), "chitterchatter-home-"));
+      const daemon = spawn(
+        "npx",
+        ["tsx", "bin/chitterchatter.ts", "serve", "--port", String(port)],
+        { env: { ...process.env, HOME: home }, stdio: "pipe" },
+      );
+      try {
+        for (let i = 0; i < 60; i++) {
+          const s = await run(["status", "--json"], { CHITTERCHATTER_PORT: String(port) });
+          if (s.code === 0) break;
+          await delay(100);
+        }
+        await run(["new", "life-topic", "--json"], { CHITTERCHATTER_PORT: String(port) });
+        const show = await run(["show", "life-topic", "--json"], {
+          CHITTERCHATTER_PORT: String(port),
+        });
+        expect(show.code).toBe(0);
+        expect(JSON.parse(show.out)).toEqual([]);
+
+        const close = await run(["close", "life-topic"], {
+          CHITTERCHATTER_PORT: String(port),
+        });
+        expect(close.code).toBe(0);
+
+        const rm = await run(["rm", "life-topic", "--yes"], {
+          CHITTERCHATTER_PORT: String(port),
+        });
+        expect(rm.code).toBe(0);
+
+        const lsAll = await run(["ls", "--all", "--json"], {
+          CHITTERCHATTER_PORT: String(port),
+        });
+        const parsed = JSON.parse(lsAll.out) as Array<{ topic: string }>;
+        expect(parsed.find((s) => s.topic === "life-topic")).toBeUndefined();
+      } finally {
+        daemon.kill("SIGINT");
+        await delay(200);
+        rmSync(home, { recursive: true, force: true });
+      }
+    },
+    30_000,
+  );
+
+  it(
     "serve boots, new creates a session visible via ls",
     async () => {
       const port = await findFreePort();
