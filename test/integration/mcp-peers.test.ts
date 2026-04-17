@@ -65,8 +65,9 @@ describe("MCP peers", () => {
     const a = await connectMcp(srv.baseUrl, s.id);
     await call(a.client, "identify", { role: "r" });
     const out = await call(a.client, "get_monitor_command");
+    // Single-quoted URL so zsh doesn't try to glob `?viewer=`.
     expect(out.command).toMatch(
-      /^curl -N http:\/\/127\.0\.0\.1:\d+\/sessions\/[^\/]+\/stream\?viewer=[0-9A-HJKMNP-TV-Z]{26}$/i,
+      /^curl -N 'http:\/\/127\.0\.0\.1:\d+\/sessions\/[^\/]+\/stream\?viewer=[0-9A-HJKMNP-TV-Z]{26}'$/i,
     );
     await a.close();
   });
