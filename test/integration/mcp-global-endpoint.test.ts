@@ -43,11 +43,11 @@ describe("MCP global endpoint (/mcp without session id)", () => {
     const b = await connectMcp(srv.baseUrl);
 
     const meA = await call(a.client, "identify", { session: "alpha", role: "frontend" });
-    expect(meA.name).toBe("Alice");
+    expect(typeof meA.name).toBe("string");
     expect(meA.session_id).toBe(s.id);
 
     const meB = await call(b.client, "identify", { session: s.id, role: "backend" });
-    expect(meB.name).toBe("Bob");
+    expect(meB.name).not.toBe(meA.name);
 
     await call(a.client, "post_message", { body: "hi from alpha" });
     const msgs = await call(b.client, "get_messages");

@@ -24,10 +24,11 @@ describe("MCP peers", () => {
     const s = createSession(srv.db, { topic: "t" });
     const a = await connectMcp(srv.baseUrl, s.id);
     const b = await connectMcp(srv.baseUrl, s.id);
-    await call(a.client, "identify", { role: "frontend" });
-    await call(b.client, "identify", { role: "backend" });
+    const meA = await call(a.client, "identify", { role: "frontend" });
+    const meB = await call(b.client, "identify", { role: "backend" });
     const peersFromA = await call(a.client, "list_peers");
-    expect(peersFromA.map((p: { name: string }) => p.name)).toEqual(["Bob"]);
+    expect(peersFromA.map((p: { name: string }) => p.name)).toEqual([meB.name]);
+    expect(meA.name).not.toBe(meB.name);
     await a.close();
     await b.close();
   });
@@ -48,13 +49,14 @@ describe("MCP peers", () => {
   it("leave frees the name", async () => {
     const s = createSession(srv.db, { topic: "t" });
     const a = await connectMcp(srv.baseUrl, s.id);
-    await call(a.client, "identify", { role: "r" });
+    const first = await call(a.client, "identify", { role: "r" });
     await call(a.client, "leave");
     await a.close();
 
     const c = await connectMcp(srv.baseUrl, s.id);
     const me = await call(c.client, "identify", { role: "r" });
-    expect(me.name).toBe("Alice");
+    // Pool pick with the same seed = same first-free name.
+    expect(me.name).toBe(first.name);
     await c.close();
   });
 

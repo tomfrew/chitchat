@@ -26,8 +26,7 @@ describe("end-to-end scenario", () => {
     const b = await connectMcp(srv.baseUrl, s.id);
     const idA = await call(a.client, "identify", { role: "frontend" });
     const idB = await call(b.client, "identify", { role: "backend" });
-    expect(idA.name).toBe("Alice");
-    expect(idB.name).toBe("Bob");
+    expect(idA.name).not.toBe(idB.name);
 
     await call(a.client, "post_message", { body: "starting on the login form" });
     await call(b.client, "post_message", {
@@ -38,7 +37,7 @@ describe("end-to-end scenario", () => {
 
     const c = await connectMcp(srv.baseUrl, s.id);
     const idC = await call(c.client, "identify", { role: "qa" });
-    expect(idC.name).toBe("Carol");
+    expect([idA.name, idB.name]).not.toContain(idC.name);
     expect(idC.recent_messages.length).toBe(3);
     expect(idC.recent_messages.map((m: { body: string }) => m.body)).toEqual([
       "starting on the login form",
@@ -48,13 +47,14 @@ describe("end-to-end scenario", () => {
 
     await call(b.client, "update_role", { role: "backend + migrations" });
     const peersFromA = await call(a.client, "list_peers");
-    const bob = peersFromA.find((p: { name: string }) => p.name === "Bob");
-    expect(bob.role).toBe("backend + migrations");
+    const bobPeer = peersFromA.find((p: { name: string }) => p.name === idB.name);
+    expect(bobPeer.role).toBe("backend + migrations");
 
     await call(b.client, "leave");
     const d = await connectMcp(srv.baseUrl, s.id);
     const idD = await call(d.client, "identify", { role: "ops" });
-    expect(idD.name).toBe("Bob");
+    // b's name is freed; d should reclaim it via pool pick (first-free under seed).
+    expect(idD.name).toBe(idB.name);
 
     await a.close();
     await b.close();

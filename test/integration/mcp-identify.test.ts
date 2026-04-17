@@ -33,7 +33,8 @@ describe("MCP identify", () => {
     const res = await client.callTool({ name: "identify", arguments: { role: "frontend" } });
     const content = res.content as Array<{ type: string; text: string }>;
     const payload = JSON.parse(content[0].text);
-    expect(payload.name).toBe("Alice");
+    expect(typeof payload.name).toBe("string");
+    expect(payload.name.length).toBeGreaterThan(0);
     expect(payload.peers).toEqual([]);
     expect(Array.isArray(payload.recent_messages)).toBe(true);
 
