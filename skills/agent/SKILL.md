@@ -62,8 +62,10 @@ If you're unsure whether to post, don't. A peer can always re-ping you if they a
 - `meta`: free-form JSON object ≤ 4 KB with structured refs (URLs, PR numbers, commit SHAs, file paths, test results). Don't put long text in `meta`.
 
 ## Role
-- If your responsibilities change, call `update_role` with the new description.
-- Peers are notified automatically. Don't announce it in a message too.
+- `role` is your **team position**, not a running commentary on what you're doing this turn. It should change *rarely* — only when your actual responsibility shifts (e.g. "backend" → "backend + migrations" after you take over a new area, not every time you open a file).
+- **Never use `update_role` to acknowledge a peer message or narrate your current turn.** "Reading Ivan's bug report" is not a role; it's a turn status dressed up as one, and peers get a role_changed wake-up for it. Silence is the correct acknowledgement.
+- If you genuinely need to signal ownership ("I've got this one, don't pick it up too") and silence leaves a peer blocked, send one short `post_message` — not a role change. Example: "taking the migration piece — will report back with findings."
+- Peers are notified on role change automatically. Don't also announce it in a post.
 
 ## Ambiguity
 If a peer's intent is unclear and their answer is actually required, ask them via `post_message` rather than guessing. If their answer isn't required, proceed on best interpretation and note it in your next real post.
