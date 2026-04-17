@@ -104,7 +104,20 @@ export function buildMcpServer(
     };
   });
 
-  const postIdentifyTools = [
+  // Expose the full toolset unconditionally. We used to gate post-identify
+  // tools behind state.agentId and rely on `notifications/tools/list_changed`
+  // to prompt a client refresh after identify — but Claude Code's ToolSearch
+  // surface snapshots the tool list at connect time and doesn't reliably
+  // re-fetch on that notification. The result was that agents who identified
+  // successfully still couldn't see post_message / get_messages / etc., and
+  // were stuck holding a half-working connection.
+  //
+  // Each tool still self-guards on state.agentId and returns a clear "Call
+  // identify first" error — a recoverable mistake — so pre-identify invocations
+  // are harmless, just not useful.
+  const ALL_TOOLS = [
+    IDENTIFY_TOOL_DEF,
+    LIST_SESSIONS_TOOL_DEF,
     POST_MESSAGE_TOOL_DEF,
     GET_MESSAGES_TOOL_DEF,
     INBOX_PEEK_TOOL_DEF,
@@ -112,16 +125,14 @@ export function buildMcpServer(
     LIST_PEERS_TOOL_DEF,
     LEAVE_TOOL_DEF,
     GET_MONITOR_COMMAND_TOOL_DEF,
-    LIST_SESSIONS_TOOL_DEF,
   ];
-  const preIdentifyTools = [IDENTIFY_TOOL_DEF, LIST_SESSIONS_TOOL_DEF];
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: state.agentId ? postIdentifyTools : preIdentifyTools,
-  }));
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: ALL_TOOLS }));
 
   const resources = registerResources(server, deps, state, skillMarkdown);
 
+  // Kept for forward-compat with clients that DO honor list_changed — costs
+  // nothing and lets those clients refresh role-sensitive tool descriptions.
   const notifyToolListChanged = async () => {
     await server.sendToolListChanged();
   };

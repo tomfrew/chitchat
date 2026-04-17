@@ -42,10 +42,13 @@ async function main() {
   await assert("alice got a name", typeof meA.name === "string" && meA.name.length > 0);
   const aliceName = meA.name;
 
-  // Pre-identify check on a fresh connection confirms the toolset is restricted.
+  // Tool list exposes the full surface regardless of identify state.
   const peek = await connect("peek");
   const peekTools = (await peek.listTools()).tools.map((t) => t.name).sort();
-  await assertDeep("pre-identify tools", peekTools, ["identify", "list_sessions"]);
+  await assertDeep("full toolset exposed pre-identify", peekTools, [
+    "get_messages", "get_monitor_command", "identify", "inbox_peek", "leave",
+    "list_peers", "list_sessions", "post_message", "update_role",
+  ]);
   await peek.close();
 
   // Bob joins the same session via its id (proves topic/id interchangeability).

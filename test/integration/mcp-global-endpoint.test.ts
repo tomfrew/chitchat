@@ -56,15 +56,16 @@ describe("MCP global endpoint (/mcp without session id)", () => {
     await b.close();
   });
 
-  it("leave returns to pre-identify tool set", async () => {
+  it("leave leaves the tool surface unchanged (tools are not gated)", async () => {
     createSession(srv.db, { topic: "alpha" });
     const a = await connectMcp(srv.baseUrl);
     await call(a.client, "identify", { session: "alpha", role: "r" });
-    const before = await a.client.listTools();
-    expect(before.tools.map((t) => t.name)).toContain("post_message");
+    const before = (await a.client.listTools()).tools.map((t) => t.name).sort();
     await call(a.client, "leave");
-    const after = await a.client.listTools();
-    expect(after.tools.map((t) => t.name).sort()).toEqual(["identify", "list_sessions"]);
+    const after = (await a.client.listTools()).tools.map((t) => t.name).sort();
+    expect(after).toEqual(before);
+    // But post_message now errors because state was cleared.
+    await expect(call(a.client, "post_message", { body: "x" })).rejects.toThrow(/identify first/i);
     await a.close();
   });
 

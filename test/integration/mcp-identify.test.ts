@@ -13,11 +13,34 @@ describe("MCP identify", () => {
     await srv.close();
   });
 
-  it("pre-identify tool list contains identify + list_sessions only", async () => {
+  it("tool list exposes the full surface unconditionally (not gated on identify)", async () => {
     const s = createSession(srv.db, { topic: "t" });
     const { client, close } = await connectMcp(srv.baseUrl, s.id);
     const tools = await client.listTools();
-    expect(tools.tools.map((t) => t.name).sort()).toEqual(["identify", "list_sessions"]);
+    const names = tools.tools.map((t) => t.name).sort();
+    // All nine tools show up before identify. This matters for clients
+    // (Claude Code ToolSearch) that snapshot the tool list at connect time
+    // and don't re-fetch on tools/list_changed.
+    expect(names).toEqual([
+      "get_messages",
+      "get_monitor_command",
+      "identify",
+      "inbox_peek",
+      "leave",
+      "list_peers",
+      "list_sessions",
+      "post_message",
+      "update_role",
+    ]);
+    await close();
+  });
+
+  it("calling a post-identify tool before identify returns a clear error", async () => {
+    const s = createSession(srv.db, { topic: "t" });
+    const { client, close } = await connectMcp(srv.baseUrl, s.id);
+    await expect(client.callTool({ name: "post_message", arguments: { body: "hi" } })).rejects.toThrow(
+      /identify first/i,
+    );
     await close();
   });
 
