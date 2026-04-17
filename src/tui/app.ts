@@ -50,6 +50,9 @@ export function runTui(rt: Runtime): Promise<void> {
     });
 
     // --- Messages pane (right) ---
+    // padding.right reserves a column so wrapped lines don't bleed into the
+    // scrollbar track — otherwise blessed leaves text artifacts where the
+    // bar was drawn on the previous frame.
     const messagesBox = blessed.log({
       parent: screen,
       label: " messages ",
@@ -58,6 +61,7 @@ export function runTui(rt: Runtime): Promise<void> {
       width: "70%",
       height: "100%-1",
       border: { type: "line" },
+      padding: { left: 1, right: 2 },
       style: {
         border: { fg: "gray" },
         focus: { border: { fg: "cyan" } },
@@ -68,7 +72,12 @@ export function runTui(rt: Runtime): Promise<void> {
       vi: false,
       mouse: true,
       tags: true,
-      scrollbar: { ch: " ", style: { bg: "gray" } },
+      wrap: true,
+      scrollbar: {
+        ch: " ",
+        track: { bg: "black" },
+        style: { bg: "cyan" },
+      },
     });
 
     // --- Detail sidebar (hidden by default) ---
@@ -80,14 +89,22 @@ export function runTui(rt: Runtime): Promise<void> {
       width: "60%",
       height: "80%",
       border: { type: "line" },
+      padding: { left: 1, right: 2 },
       style: {
         border: { fg: "cyan" },
         bg: "black",
       },
       scrollable: true,
+      alwaysScroll: true,
       keys: true,
       mouse: true,
       tags: true,
+      wrap: true,
+      scrollbar: {
+        ch: " ",
+        track: { bg: "black" },
+        style: { bg: "cyan" },
+      },
       hidden: true,
     });
 
