@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -42,11 +42,27 @@ export interface ConnectionState {
   agentName: string | null;
 }
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SKILL_PATH = join(__dirname, "..", "..", "skills", "agent", "SKILL.md");
+/**
+ * Resolve the skill file by walking up from this module until we find a
+ * package.json. Works under both `src/mcp/server.ts` (dev via tsx) and
+ * `dist/src/mcp/server.js` (built), since both share the same package root.
+ */
+function findPackageRoot(startUrl: string): string | null {
+  let dir = dirname(fileURLToPath(startUrl));
+  for (let i = 0; i < 10; i++) {
+    if (existsSync(join(dir, "package.json"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+  return null;
+}
+
 const skillMarkdown = (() => {
+  const root = findPackageRoot(import.meta.url);
+  if (!root) return "# ChitChat Agent Skill\n(SKILL.md not found — package root not located)";
   try {
-    return readFileSync(SKILL_PATH, "utf8");
+    return readFileSync(join(root, "skills", "agent", "SKILL.md"), "utf8");
   } catch {
     return "# ChitChat Agent Skill\n(SKILL.md not found)";
   }
