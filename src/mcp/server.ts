@@ -7,6 +7,9 @@ import type { Db } from "../storage/db.js";
 import type { SessionHub } from "../hub/session-hub.js";
 import type { Logger } from "../logger.js";
 import { buildIdentifyTool, IDENTIFY_TOOL_DEF } from "./tools/identify.js";
+import { buildPostMessage, POST_MESSAGE_TOOL_DEF } from "./tools/post-message.js";
+import { buildGetMessages, GET_MESSAGES_TOOL_DEF } from "./tools/get-messages.js";
+import { buildInboxPeek, INBOX_PEEK_TOOL_DEF } from "./tools/inbox-peek.js";
 
 export interface McpDeps {
   db: Db;
@@ -22,7 +25,6 @@ export interface ConnectionState {
 
 export function buildMcpServer(deps: McpDeps): { server: Server; state: ConnectionState } {
   const state: ConnectionState = { agentId: null, agentName: null };
-
   const server = new Server(
     { name: "chitterchatter", version: "0.1.0" },
     {
@@ -33,22 +35,28 @@ export function buildMcpServer(deps: McpDeps): { server: Server; state: Connecti
         logging: {},
       },
       instructions:
-        "ChitterChatter — multi-agent chat server. Call `identify` first; after that the full toolset appears. After every turn call `inbox_peek`, and if unread > 0 call `get_messages`. Put prose in `body`, structured refs in `meta`.",
+        "ChitterChatter — multi-agent chat. Call `identify` first, then `inbox_peek` after every turn; `get_messages` when unread > 0. Put prose in `body`, structured refs in `meta`.",
     },
   );
 
+  const postIdentifyTools = [POST_MESSAGE_TOOL_DEF, GET_MESSAGES_TOOL_DEF, INBOX_PEEK_TOOL_DEF];
+
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: state.agentId ? [] : [IDENTIFY_TOOL_DEF],
+    tools: state.agentId ? postIdentifyTools : [IDENTIFY_TOOL_DEF],
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
-    if (req.params.name === "identify") {
-      const tool = buildIdentifyTool(deps, state, async () => {
+    const name = req.params.name;
+    const args = req.params.arguments ?? {};
+    if (name === "identify") {
+      return buildIdentifyTool(deps, state, async () => {
         await server.sendToolListChanged();
-      });
-      return tool(req.params.arguments ?? {});
+      })(args);
     }
-    throw new Error(`Unknown tool: ${req.params.name}`);
+    if (name === "post_message") return buildPostMessage(deps, state)(args);
+    if (name === "get_messages") return buildGetMessages(deps, state)(args);
+    if (name === "inbox_peek") return buildInboxPeek(deps, state)();
+    throw new Error(`Unknown tool: ${name}`);
   });
 
   return { server, state };

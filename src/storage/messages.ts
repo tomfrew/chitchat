@@ -100,3 +100,47 @@ export function latestMessageId(db: Db, sessionId: string): string | null {
     .get(sessionId);
   return row?.id ?? null;
 }
+
+export interface MessageWithSender extends MessageRow {
+  sender_name: string | null;
+  sender_role: string | null;
+}
+
+type JoinRow = DbRow & { sender_name: string | null; sender_role: string | null };
+
+function joinRowToMessage(r: JoinRow): MessageWithSender {
+  return { ...rowToMessage(r), sender_name: r.sender_name, sender_role: r.sender_role };
+}
+
+export function getMessagesWithSender(
+  db: Db,
+  sessionId: string,
+  opts: GetMessagesOptions,
+): MessageWithSender[] {
+  if (opts.since !== undefined && opts.before !== undefined) {
+    throw new Error("getMessagesWithSender: pass at most one of { since, before }");
+  }
+  const limit = Math.min(opts.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
+  const joinSql = `
+    SELECT m.*, a.name AS sender_name, a.role AS sender_role
+    FROM messages m LEFT JOIN agents a ON a.id = m.agent_id
+    WHERE m.session_id = ?`;
+
+  if (opts.before !== undefined) {
+    return db
+      .prepare<[string, string, number], JoinRow>(
+        `${joinSql} AND m.id < ? ORDER BY m.id DESC LIMIT ?`,
+      )
+      .all(sessionId, opts.before, limit)
+      .map(joinRowToMessage)
+      .reverse();
+  }
+
+  const sinceId = opts.since ?? "";
+  return db
+    .prepare<[string, string, number], JoinRow>(
+      `${joinSql} AND m.id > ? ORDER BY m.id ASC LIMIT ?`,
+    )
+    .all(sessionId, sinceId, limit)
+    .map(joinRowToMessage);
+}
