@@ -95,6 +95,11 @@ export function registerResources(
       )
         affected.push(URI.peers);
       if (event.type === "session_closed") affected.push(URI.session);
+    if (event.type === "server_shutdown") {
+      // Let subscribed MCP clients know state may be changing even if they're
+      // not on the SSE stream. No URI-specific signal exists, so nudge session.
+      affected.push(URI.session);
+    }
       for (const uri of affected) {
         if (subscriptions.has(uri)) {
           server.sendResourceUpdated({ uri }).catch(() => {});

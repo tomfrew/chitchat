@@ -101,7 +101,12 @@ data: {"name":"Carol","ts":...}
 
 event: session_closed
 data: {"ts":...}
+
+event: server_shutdown
+data: {"reason":"SIGINT","ts":...}
 ```
+
+`server_shutdown` fires when the daemon is shutting down (e.g. operator sent SIGINT). Every SSE subscriber across every session gets it. Receiving it should prompt the subscriber to stop its Monitor and disconnect; the daemon will forcibly close the connection ~150ms later.
 
 Each event is a single `data:` JSON line — piping through the Claude Code `Monitor` tool yields one notification per event.
 

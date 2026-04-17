@@ -13,7 +13,7 @@
     "lint": "eslint . --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev": "tsx bin/chitchat.ts serve"
+    "dev": "tsc -p . && node dist/bin/chitchat.js serve"
   },
   "dependencies": {
     "@hono/node-server": "^1.12.0",

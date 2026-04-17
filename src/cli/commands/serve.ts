@@ -29,11 +29,40 @@ export async function runServe(opts: { port?: number }): Promise<void> {
     );
   });
 
-  process.on("SIGINT", () => {
-    logger.info("shutdown", { reason: "SIGINT" });
-    server.close(() => {
-      db.close();
-      process.exit(0);
-    });
-  });
+  let shuttingDown = false;
+  const shutdown = (reason: string) => {
+    if (shuttingDown) {
+      // Second ^C → give up on graceful exit and hard-kill.
+      process.stderr.write("force exit\n");
+      process.exit(1);
+    }
+    shuttingDown = true;
+    logger.info("shutdown", { reason });
+    // Tell every connected SSE subscriber we're going down so agents can stop
+    // their Monitor cleanly rather than seeing a raw socket drop. Give the
+    // queues a brief flush window before we force connections closed.
+    hub.broadcast((sessionId) => ({
+      type: "server_shutdown",
+      session_id: sessionId,
+      reason,
+    }));
+    setTimeout(() => {
+      // SSE streams and MCP long-lived transports never self-close, so a plain
+      // server.close(cb) hangs forever. Force them closed.
+      server.closeAllConnections?.();
+      server.close(() => {
+        db.close();
+        process.exit(0);
+      });
+    }, 150);
+    // Safety net: if closeAllConnections missed something or the OS takes too
+    // long to fire the close event, hard-exit after a short grace window.
+    setTimeout(() => {
+      process.stderr.write("shutdown timeout; forcing exit\n");
+      process.exit(1);
+    }, 2000).unref();
+  };
+
+  process.once("SIGINT", () => shutdown("SIGINT"));
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
 }

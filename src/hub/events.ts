@@ -11,4 +11,5 @@ export type HubEvent =
   | { type: "peer_join"; session_id: string; name: string; role: string }
   | { type: "peer_leave"; session_id: string; name: string }
   | { type: "role_changed"; session_id: string; name: string; role: string }
-  | { type: "session_closed"; session_id: string };
+  | { type: "session_closed"; session_id: string }
+  | { type: "server_shutdown"; session_id: string; reason: string };

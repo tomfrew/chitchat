@@ -33,6 +33,11 @@ function toSseEvent(e: HubEvent): { event: string; data: string } {
       };
     case "session_closed":
       return { event: "session_closed", data: JSON.stringify({ ts: Date.now() }) };
+    case "server_shutdown":
+      return {
+        event: "server_shutdown",
+        data: JSON.stringify({ reason: e.reason, ts: Date.now() }),
+      };
   }
 }
 
@@ -50,6 +55,8 @@ function isSelfEvent(e: HubEvent, viewerAgentId: string, viewerName: string): bo
     case "role_changed":
       return e.name === viewerName;
     case "session_closed":
+    case "server_shutdown":
+      // Server-level events always reach every viewer, even yourself.
       return false;
   }
 }
@@ -90,7 +97,7 @@ export function sseRoutes(deps: AppDeps): Hono {
           while (queue.length) {
             const evt = queue.shift()!;
             await stream.writeSSE(toSseEvent(evt));
-            if (evt.type === "session_closed") {
+            if (evt.type === "session_closed" || evt.type === "server_shutdown") {
               unsub();
               return;
             }
