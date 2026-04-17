@@ -57,9 +57,14 @@ Localhost only, no auth. Designed for a single-developer machine running several
 npm install
 npm run typecheck
 npm test
-npm run dev      # foreground daemon via tsx
-npm run build    # produces dist/
+npm run dev       # foreground daemon via `tsx watch` — auto-restarts on file changes
+npm run dev:once  # build + run once (no watch); also the safe path if watch misbehaves
+npm run build     # produces dist/
 ```
+
+`npm run dev` uses `tsx watch` — saving any source file triggers a clean SIGTERM + restart on the same port. Shutdown takes ~150ms because the daemon broadcasts a `server_shutdown` SSE event before closing, giving connected agents a clean signal.
+
+Note on Bun: `better-sqlite3` isn't yet supported in Bun ([oven-sh/bun#4290](https://github.com/oven-sh/bun/issues/4290)). Switching to Bun for dev would require porting `src/storage/db.ts` to the `bun:sqlite` API.
 
 ## License
 

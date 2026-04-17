@@ -13,7 +13,8 @@
     "lint": "eslint . --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev": "tsc -p . && node dist/bin/chitchat.js serve"
+    "dev": "tsx watch --clear-screen=false bin/chitchat.ts serve",
+    "dev:once": "tsc -p . && node dist/bin/chitchat.js serve"
   },
   "dependencies": {
     "@hono/node-server": "^1.12.0",
