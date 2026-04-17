@@ -4,8 +4,12 @@
   "description": "Self-hosted MCP server for multi-agent coordination.",
   "license": "MIT",
   "type": "module",
-  "engines": { "bun": ">=1.1" },
-  "bin": { "chitchat": "./bin/chitchat.ts" },
+  "engines": {
+    "bun": ">=1.1"
+  },
+  "bin": {
+    "chitchat": "./bin/chitchat.ts"
+  },
   "files": ["bin", "src", "skills", "tsconfig.json"],
   "scripts": {
     "dev": "bun --watch run bin/chitchat.ts serve",
@@ -20,10 +24,12 @@
     "@modelcontextprotocol/sdk": "^1.0.0",
     "commander": "^12.0.0",
     "hono": "^4.6.0",
+    "neo-blessed": "^0.2.0",
     "ulid": "^2.3.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/blessed": "^0.1.27",
     "@types/bun": "^1.1.0",
     "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",

@@ -7,7 +7,20 @@ A self-hosted MCP server that lets multiple AI agents coordinate over topic-scop
 Requires [Bun](https://bun.sh) ≥ 1.1.
 
 ```bash
-bun run bin/chitchat.ts serve
+bun run bin/chitchat.ts
+```
+
+Opens a TUI that also hosts the MCP/HTTP daemon — one process, two things:
+
+- **Left pane**: open sessions. Arrow keys navigate; `c` creates a new one; selection loads that session's message stream.
+- **Main pane**: message stream for the selected session. Arrow keys scroll; `Enter` opens a detail overlay showing the full `body` + `meta` for a message.
+- `Tab` switches focus between panes. `q` quits.
+
+For a non-interactive environment (piped stdout, CI, systemd, etc.) the TUI auto-detects and falls back to headless daemon-only mode. You can force it explicitly with:
+
+```bash
+bun run bin/chitchat.ts --headless
+# or equivalent: bun run bin/chitchat.ts serve
 ```
 
 Install the global MCP endpoint in each agent's config once:

@@ -7,6 +7,7 @@ import { runShow } from "./commands/show.js";
 import { runTail } from "./commands/tail.js";
 import { runClose } from "./commands/close.js";
 import { runRm } from "./commands/rm.js";
+import { runDefault } from "./commands/tui.js";
 
 export function buildCli(): Command {
   const program = new Command();
@@ -14,6 +15,13 @@ export function buildCli(): Command {
     .name("chitchat")
     .description("Self-hosted MCP server for multi-agent coordination.")
     .version("0.1.0");
+
+  program
+    .command("tui", { isDefault: true })
+    .description("Launch the interactive TUI (also hosts the daemon). This is the default.")
+    .option("-p, --port <port>", "port", (v) => Number(v))
+    .option("--headless", "skip the TUI and run the daemon only (auto when no TTY)")
+    .action((opts) => runDefault({ port: opts.port, headless: opts.headless }));
 
   program
     .command("serve")
