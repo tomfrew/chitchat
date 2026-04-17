@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpDeps, ConnectionState } from "../server.js";
 import { appendMessage } from "../../storage/messages.js";
-import { getAgent } from "../../storage/agents.js";
+import { getAgent, setAgentCursor } from "../../storage/agents.js";
 
 const META_LIMIT = 4096;
 const BODY_LIMIT = 16384;
@@ -42,6 +42,10 @@ export function buildPostMessage(deps: McpDeps, state: ConnectionState) {
       body: parsed.body,
       meta: parsed.meta ?? null,
     });
+
+    // Advance this agent's cursor past their own post so inbox_peek / get_messages
+    // don't surface it as unread.
+    setAgentCursor(deps.db, state.agentId, m.id);
 
     deps.hub.publish({
       type: "message",
