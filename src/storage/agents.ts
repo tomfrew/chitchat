@@ -9,12 +9,14 @@ export interface Agent {
   joined_at: number;
   left_at: number | null;
   last_cursor: string | null;
+  persistent_id: string | null;
 }
 
 export interface CreateAgentInput {
   session_id: string;
   name: string;
   role: string;
+  persistent_id?: string | null;
 }
 
 export function createAgent(db: Db, input: CreateAgentInput): Agent {
@@ -26,12 +28,31 @@ export function createAgent(db: Db, input: CreateAgentInput): Agent {
     joined_at: Date.now(),
     left_at: null,
     last_cursor: null,
+    persistent_id: input.persistent_id ?? null,
   };
   db.prepare(
-    `INSERT INTO agents (id, session_id, name, role, joined_at, left_at, last_cursor)
-     VALUES (@id, @session_id, @name, @role, @joined_at, @left_at, @last_cursor)`,
+    `INSERT INTO agents (id, session_id, name, role, joined_at, left_at, last_cursor, persistent_id)
+     VALUES (@id, @session_id, @name, @role, @joined_at, @left_at, @last_cursor, @persistent_id)`,
   ).run(row);
   return row;
+}
+
+/**
+ * Find the most-recent prior agent in a session with the given persistent_id.
+ * Used at identify to reclaim the name the agent had before.
+ */
+export function findAgentByPersistentId(
+  db: Db,
+  sessionId: string,
+  persistentId: string,
+): Agent | undefined {
+  return db
+    .prepare<[string, string], Agent>(
+      `SELECT * FROM agents
+       WHERE session_id = ? AND persistent_id = ?
+       ORDER BY joined_at DESC LIMIT 1`,
+    )
+    .get(sessionId, persistentId);
 }
 
 export function getAgent(db: Db, id: string): Agent | undefined {

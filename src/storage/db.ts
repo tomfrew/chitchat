@@ -38,6 +38,14 @@ const MIGRATIONS: string[] = [
   // v4: snapshot sender role on the message row so get_messages returns the role
   // at the time of posting, not the live agents.role (which changes on update_role).
   `ALTER TABLE messages ADD COLUMN sender_role TEXT;`,
+  // v5: opaque agent-supplied persistent id so reconnecting agents can reclaim
+  // the name they had before. Scoped to session; no uniqueness constraint (the
+  // same persistent_id across different sessions is fine, and two concurrent
+  // agents claiming the same persistent_id in one session just means the later
+  // one falls back to pool pick).
+  `ALTER TABLE agents ADD COLUMN persistent_id TEXT;
+   CREATE INDEX agents_session_persistent_id
+     ON agents(session_id, persistent_id) WHERE persistent_id IS NOT NULL;`,
 ];
 
 export function openDatabase(path: string): Db {
