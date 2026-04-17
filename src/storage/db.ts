@@ -21,9 +21,10 @@ const MIGRATIONS: string[] = [
     role         TEXT NOT NULL,
     joined_at    INTEGER NOT NULL,
     left_at      INTEGER,
-    last_cursor  TEXT,
-    UNIQUE(session_id, name)
-  );`,
+    last_cursor  TEXT
+  );
+  CREATE UNIQUE INDEX agents_session_name_active
+    ON agents(session_id, name) WHERE left_at IS NULL;`,
   `CREATE TABLE messages (
     id          TEXT PRIMARY KEY,
     session_id  TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,

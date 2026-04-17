@@ -76,7 +76,10 @@ export function mcpHandler(deps: AppDeps) {
         if (sid) transports.delete(sid);
       };
 
-      const { server } = buildMcpServer({ ...deps, sessionId });
+      const sock = req.socket;
+      const host = sock?.localAddress === "::1" ? "127.0.0.1" : (sock?.localAddress ?? "127.0.0.1");
+      const port = sock?.localPort ?? 0;
+      const { server } = buildMcpServer({ ...deps, sessionId, host, port });
       await server.connect(transport);
       await transport.handleRequest(req, res, body);
       return;
