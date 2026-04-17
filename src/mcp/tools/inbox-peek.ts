@@ -14,11 +14,11 @@ export function buildInboxPeek(deps: McpDeps, state: ConnectionState) {
     if (!state.agentId) throw new Error("Call identify first.");
     const agent = getAgent(deps.db, state.agentId);
     if (!agent) throw new Error("agent record missing");
-    const count = countMessagesAfter(deps.db, deps.sessionId, agent.last_cursor);
+    const count = countMessagesAfter(deps.db, state.sessionId!, agent.last_cursor);
     let latestFrom: string | null = null;
     let latestSnippet: string | null = null;
     if (count > 0) {
-      const tail = getMessagesWithSender(deps.db, deps.sessionId, {
+      const tail = getMessagesWithSender(deps.db, state.sessionId!, {
         since: agent.last_cursor ?? "",
         limit: 500,
       });

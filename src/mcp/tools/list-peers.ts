@@ -11,7 +11,7 @@ export const LIST_PEERS_TOOL_DEF = {
 export function buildListPeers(deps: McpDeps, state: ConnectionState) {
   return async () => {
     if (!state.agentId) throw new Error("Call identify first.");
-    const peers = listActiveAgents(deps.db, deps.sessionId)
+    const peers = listActiveAgents(deps.db, state.sessionId!)
       .filter((a) => a.id !== state.agentId)
       .map((a) => ({
         name: a.name,

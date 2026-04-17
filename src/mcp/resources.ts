@@ -5,7 +5,7 @@ import {
   UnsubscribeRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import type { McpDeps } from "./server.js";
+import type { McpDeps, ConnectionState } from "./server.js";
 import { getSession } from "../storage/sessions.js";
 import { listActiveAgents } from "../storage/agents.js";
 import { getMessages } from "../storage/messages.js";
@@ -17,12 +17,19 @@ export const URI = {
   skill: "chitterchatter://skill",
 };
 
+export interface ResourceHandle {
+  bindSession(sessionId: string | null): void;
+  dispose(): void;
+}
+
 export function registerResources(
   server: Server,
   deps: McpDeps,
+  state: ConnectionState,
   skillMarkdown: string,
-): () => void {
+): ResourceHandle {
   const subscriptions = new Set<string>();
+  let hubUnsub: (() => void) | null = null;
 
   server.setRequestHandler(ListResourcesRequestSchema, async () => ({
     resources: [
@@ -35,30 +42,30 @@ export function registerResources(
 
   server.setRequestHandler(ReadResourceRequestSchema, async (req) => {
     const uri = req.params.uri;
+    if (uri === URI.skill) {
+      return { contents: [{ uri, mimeType: "text/markdown", text: skillMarkdown }] };
+    }
+    const sessionId = state.sessionId;
+    const empty = (text: string) => ({
+      contents: [{ uri, mimeType: "application/json", text }],
+    });
+    if (!sessionId) return empty("null");
+
     if (uri === URI.session) {
-      const s = getSession(deps.db, deps.sessionId);
-      return {
-        contents: [{ uri, mimeType: "application/json", text: JSON.stringify(s ?? null) }],
-      };
+      const s = getSession(deps.db, sessionId);
+      return empty(JSON.stringify(s ?? null));
     }
     if (uri === URI.messages) {
-      const latest = getMessages(deps.db, deps.sessionId, { limit: 50 });
-      return {
-        contents: [{ uri, mimeType: "application/json", text: JSON.stringify(latest) }],
-      };
+      const latest = getMessages(deps.db, sessionId, { limit: 50 });
+      return empty(JSON.stringify(latest));
     }
     if (uri === URI.peers) {
-      const peers = listActiveAgents(deps.db, deps.sessionId).map((a) => ({
+      const peers = listActiveAgents(deps.db, sessionId).map((a) => ({
         name: a.name,
         role: a.role,
         joined_at: a.joined_at,
       }));
-      return {
-        contents: [{ uri, mimeType: "application/json", text: JSON.stringify(peers) }],
-      };
-    }
-    if (uri === URI.skill) {
-      return { contents: [{ uri, mimeType: "text/markdown", text: skillMarkdown }] };
+      return empty(JSON.stringify(peers));
     }
     throw new Error(`Unknown resource: ${uri}`);
   });
@@ -72,22 +79,38 @@ export function registerResources(
     return {};
   });
 
-  const unsub = deps.hub.subscribe(deps.sessionId, (event) => {
-    const affected: string[] = [];
-    if (event.type === "message") affected.push(URI.messages);
-    if (
-      event.type === "peer_join" ||
-      event.type === "peer_leave" ||
-      event.type === "role_changed"
-    )
-      affected.push(URI.peers);
-    if (event.type === "session_closed") affected.push(URI.session);
-    for (const uri of affected) {
-      if (subscriptions.has(uri)) {
-        server.sendResourceUpdated({ uri }).catch(() => {});
-      }
+  function bindSession(sessionId: string | null) {
+    if (hubUnsub) {
+      hubUnsub();
+      hubUnsub = null;
     }
-  });
+    if (!sessionId) return;
+    hubUnsub = deps.hub.subscribe(sessionId, (event) => {
+      const affected: string[] = [];
+      if (event.type === "message") affected.push(URI.messages);
+      if (
+        event.type === "peer_join" ||
+        event.type === "peer_leave" ||
+        event.type === "role_changed"
+      )
+        affected.push(URI.peers);
+      if (event.type === "session_closed") affected.push(URI.session);
+      for (const uri of affected) {
+        if (subscriptions.has(uri)) {
+          server.sendResourceUpdated({ uri }).catch(() => {});
+        }
+      }
+    });
+  }
 
-  return unsub;
+  // If the connection URL pinned a session, bind immediately.
+  if (state.sessionId) bindSession(state.sessionId);
+
+  return {
+    bindSession,
+    dispose: () => {
+      if (hubUnsub) hubUnsub();
+      hubUnsub = null;
+    },
+  };
 }

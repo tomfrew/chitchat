@@ -7,9 +7,10 @@ export const GET_MONITOR_COMMAND_TOOL_DEF = {
   inputSchema: { type: "object", properties: {} },
 };
 
-export function buildGetMonitorCommand(deps: McpDeps, _state: ConnectionState) {
+export function buildGetMonitorCommand(deps: McpDeps, state: ConnectionState) {
   return async () => {
-    const url = `http://${deps.host}:${deps.port}/sessions/${deps.sessionId}/stream`;
+    if (!state.sessionId) throw new Error("Call identify first.");
+    const url = `http://${deps.host}:${deps.port}/sessions/${state.sessionId}/stream`;
     return {
       content: [
         {

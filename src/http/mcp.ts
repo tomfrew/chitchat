@@ -26,25 +26,23 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 export function mcpHandler(deps: AppDeps) {
   const transports = new Map<string, Entry>();
 
-  return async (req: IncomingMessage, res: ServerResponse, sessionId: string) => {
-    if (!getSession(deps.db, sessionId)) {
+  return async (req: IncomingMessage, res: ServerResponse, pinnedSessionId?: string) => {
+    // If the URL pinned a session id, verify it exists.
+    if (pinnedSessionId && !getSession(deps.db, pinnedSessionId)) {
       res.statusCode = 404;
       res.setHeader("content-type", "application/json");
       res.end(JSON.stringify({ error: "session not found" }));
       return;
     }
 
-    const mcpSessionId =
-      (req.headers["mcp-session-id"] as string | undefined)?.toString();
+    const mcpSessionId = (req.headers["mcp-session-id"] as string | undefined)?.toString();
 
-    // Existing transport — reuse.
     if (mcpSessionId && transports.has(mcpSessionId)) {
       await transports.get(mcpSessionId)!.transport.handleRequest(req, res);
       return;
     }
 
     if (req.method === "POST") {
-      // Initialize request starts a new transport.
       const body = await readJsonBody(req);
       if (!isInitializeRequest(body)) {
         res.statusCode = 400;
@@ -74,7 +72,12 @@ export function mcpHandler(deps: AppDeps) {
       const sock = req.socket;
       const host = sock?.localAddress === "::1" ? "127.0.0.1" : (sock?.localAddress ?? "127.0.0.1");
       const port = sock?.localPort ?? 0;
-      const { server, dispose } = buildMcpServer({ ...deps, sessionId, host, port });
+      const { server, dispose } = buildMcpServer({
+        ...deps,
+        host,
+        port,
+        initialSessionId: pinnedSessionId,
+      });
       transport.onclose = () => {
         const sid = transport.sessionId;
         if (sid) transports.delete(sid);
@@ -86,7 +89,6 @@ export function mcpHandler(deps: AppDeps) {
       return;
     }
 
-    // GET/DELETE without a valid session id → bad request.
     res.statusCode = 400;
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ error: "Invalid or missing MCP session id" }));

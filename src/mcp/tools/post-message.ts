@@ -36,7 +36,7 @@ export function buildPostMessage(deps: McpDeps, state: ConnectionState) {
     if (!agent) throw new Error("agent record missing");
 
     const m = appendMessage(deps.db, {
-      session_id: deps.sessionId,
+      session_id: state.sessionId!,
       agent_id: state.agentId,
       kind: "chat",
       body: parsed.body,
@@ -45,7 +45,7 @@ export function buildPostMessage(deps: McpDeps, state: ConnectionState) {
 
     deps.hub.publish({
       type: "message",
-      session_id: deps.sessionId,
+      session_id: state.sessionId!,
       message: m,
       sender_name: agent.name,
       sender_role: agent.role,

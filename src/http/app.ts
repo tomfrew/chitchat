@@ -34,7 +34,8 @@ export function buildRequestHandler(deps: AppDeps) {
   const honoListener = getRequestListener(app.fetch);
   const mcpHandle = mcpHandler(deps);
 
-  const mcpPath = /^\/mcp\/([^/?#]+)/;
+  // Matches /mcp exactly, or /mcp/<sessionId>.
+  const mcpPath = /^\/mcp(?:\/([^/?#]+))?(?:[/?#]|$)/;
 
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const match = req.url ? mcpPath.exec(req.url) : null;

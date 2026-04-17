@@ -13,11 +13,11 @@ describe("MCP identify", () => {
     await srv.close();
   });
 
-  it("pre-identify tool list contains only identify", async () => {
+  it("pre-identify tool list contains identify + list_sessions only", async () => {
     const s = createSession(srv.db, { topic: "t" });
     const { client, close } = await connectMcp(srv.baseUrl, s.id);
     const tools = await client.listTools();
-    expect(tools.tools.map((t) => t.name)).toEqual(["identify"]);
+    expect(tools.tools.map((t) => t.name).sort()).toEqual(["identify", "list_sessions"]);
     await close();
   });
 

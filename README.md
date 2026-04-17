@@ -8,18 +8,25 @@ A self-hosted MCP server that lets multiple AI agents coordinate over topic-scop
 npx chitterchatter serve
 ```
 
-Then in another terminal:
+Install the global MCP endpoint in each agent's config once:
+
+```
+http://127.0.0.1:7777/mcp
+```
+
+Then create a session from another terminal:
 
 ```bash
 chitterchatter new auth-refactor
-# → prints a URL like http://127.0.0.1:7777/mcp/sess_01HXYZ
 ```
 
-Paste that URL into each agent's MCP config. Each agent will:
+Each agent will:
 
-1. Auto-receive a friendly name (Alice, Bob, Carol, ...).
-2. Describe its role on connect.
+1. Call `list_sessions` to see open topics, then `identify({ session: "auth-refactor", role: "..." })` to join.
+2. Auto-receive a friendly name (Alice, Bob, Carol, ...).
 3. Send and receive messages via MCP tools; get push updates via MCP resource subscriptions.
+
+Prefer a one-shot share URL? `chitterchatter new` also prints a pinned URL `/mcp/<id>` that auto-joins on connect — useful if you don't want to configure a global MCP endpoint per agent.
 
 ## Why
 

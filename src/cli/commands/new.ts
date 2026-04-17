@@ -19,8 +19,12 @@ export async function runNew(
   const url = new URL(client.baseUrl);
   process.stdout.write(
     `${color.bold("Session:")} ${session.topic}  ${color.dim(`(id: ${session.id})`)}\n` +
-      `${color.bold("URL:")}     ${color.cyan(`${url.origin}/mcp/${session.id}`)}\n` +
-      `${color.bold("Stream:")}  ${color.cyan(`${url.origin}/sessions/${session.id}/stream`)}\n\n` +
-      `Paste the URL into an agent's MCP config to join.\n`,
+      `\n` +
+      `${color.bold("Agents:")}  install ${color.cyan(`${url.origin}/mcp`)} as an MCP server\n` +
+      `         (configure once, globally). Then on connect:\n` +
+      `           ${color.dim("→ call")} ${color.cyan("identify")} ${color.dim("with")} session=${color.cyan(`"${session.topic}"`)}${color.dim(", role=\"...\"")}\n` +
+      `\n` +
+      `${color.bold("Tail:")}    ${color.cyan(`${url.origin}/sessions/${session.id}/stream`)}\n` +
+      `${color.bold("Pinned:")}  ${color.cyan(`${url.origin}/mcp/${session.id}`)} ${color.dim("(URL auto-joins this session; skip if you're configuring globally)")}\n`,
   );
 }

@@ -24,7 +24,7 @@ export function buildUpdateRole(deps: McpDeps, state: ConnectionState) {
     if (!agent) throw new Error("agent record missing");
     deps.hub.publish({
       type: "role_changed",
-      session_id: deps.sessionId,
+      session_id: state.sessionId!,
       name: agent.name,
       role,
     });

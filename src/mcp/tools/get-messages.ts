@@ -45,7 +45,7 @@ export function buildGetMessages(deps: McpDeps, state: ConnectionState) {
     };
     const markRead = opts.mark_read ?? !isBackward;
 
-    const rows = getMessagesWithSender(deps.db, deps.sessionId, effective);
+    const rows = getMessagesWithSender(deps.db, state.sessionId!, effective);
     const payload = rows.map((m) => ({
       id: m.id,
       from: m.sender_name,
