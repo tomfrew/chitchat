@@ -71,15 +71,16 @@ export function mcpHandler(deps: AppDeps) {
         },
       });
 
-      transport.onclose = () => {
-        const sid = transport.sessionId;
-        if (sid) transports.delete(sid);
-      };
-
       const sock = req.socket;
       const host = sock?.localAddress === "::1" ? "127.0.0.1" : (sock?.localAddress ?? "127.0.0.1");
       const port = sock?.localPort ?? 0;
-      const { server } = buildMcpServer({ ...deps, sessionId, host, port });
+      const { server, dispose } = buildMcpServer({ ...deps, sessionId, host, port });
+      transport.onclose = () => {
+        const sid = transport.sessionId;
+        if (sid) transports.delete(sid);
+        dispose();
+        server.close().catch(() => {});
+      };
       await server.connect(transport);
       await transport.handleRequest(req, res, body);
       return;

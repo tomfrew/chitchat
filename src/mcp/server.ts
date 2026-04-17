@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
@@ -17,6 +20,7 @@ import {
   buildGetMonitorCommand,
   GET_MONITOR_COMMAND_TOOL_DEF,
 } from "./tools/get-monitor-command.js";
+import { registerResources } from "./resources.js";
 
 export interface McpDeps {
   db: Db;
@@ -32,7 +36,19 @@ export interface ConnectionState {
   agentName: string | null;
 }
 
-export function buildMcpServer(deps: McpDeps): { server: Server; state: ConnectionState } {
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SKILL_PATH = join(__dirname, "..", "..", "skills", "agent", "SKILL.md");
+const skillMarkdown = (() => {
+  try {
+    return readFileSync(SKILL_PATH, "utf8");
+  } catch {
+    return "# ChitterChatter Agent Skill\n(SKILL.md not found)";
+  }
+})();
+
+export function buildMcpServer(
+  deps: McpDeps,
+): { server: Server; state: ConnectionState; dispose: () => void } {
   const state: ConnectionState = { agentId: null, agentName: null };
   const server = new Server(
     { name: "chitterchatter", version: "0.1.0" },
@@ -89,5 +105,7 @@ export function buildMcpServer(deps: McpDeps): { server: Server; state: Connecti
     }
   });
 
-  return { server, state };
+  const disposeResources = registerResources(server, deps, skillMarkdown);
+
+  return { server, state, dispose: disposeResources };
 }
