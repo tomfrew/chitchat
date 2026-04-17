@@ -8,7 +8,7 @@
   "bin": { "chitchat": "./dist/bin/chitchat.js" },
   "files": ["dist", "skills"],
   "scripts": {
-    "build": "tsc -p .",
+    "build": "tsc -p . && chmod +x dist/bin/chitchat.js",
     "typecheck": "tsc -p . --noEmit",
     "lint": "eslint . --ext .ts",
     "test": "vitest run",
