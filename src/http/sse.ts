@@ -85,15 +85,15 @@ export function sseRoutes(deps: AppDeps): Hono {
         notify?.();
       });
 
-      // Keepalive: stream an SSE comment every 25s so idle-connection reapers
-      // (client HTTP timeouts, OS-level NAT timeouts, corporate proxies) don't
-      // silently close the stream. Comments don't surface as events to
-      // consumers, so this is invisible to the Monitor tool.
+      // Keepalive: stream an SSE comment every 10s so idle-connection reapers
+      // (client HTTP timeouts, OS-level NAT timeouts, corporate proxies — some
+      // of which reap on 30s idle) don't silently close the stream. Comments
+      // don't surface as events to consumers, so this is invisible to the
+      // Monitor tool.
       const keepalive = setInterval(() => {
-        notify?.();
-        // trigger a loop iteration that writes ":" below
         queue.push({ __keepalive: true } as unknown as HubEvent);
-      }, 25_000);
+        notify?.();
+      }, 10_000);
 
       stream.onAbort(() => {
         clearInterval(keepalive);

@@ -13,6 +13,7 @@ import {
 } from "../../storage/agents.js";
 import { getMessages, latestMessageId } from "../../storage/messages.js";
 import { getSession, getSessionByTopic } from "../../storage/sessions.js";
+import { buildMonitorHint } from "./get-monitor-command.js";
 
 const schema = z.object({
   role: z.string().min(1).max(200),
@@ -191,6 +192,7 @@ export function buildIdentifyTool(
             peers,
             recent_messages: recent,
             cursor: agent.last_cursor ?? "",
+            monitor_hint: buildMonitorHint(deps.host, deps.port, sessionId, agent.id),
           }),
         },
       ],
