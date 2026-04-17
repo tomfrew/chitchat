@@ -4,6 +4,8 @@ import { dirname, join } from "node:path";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import type { Db } from "../storage/db.js";
@@ -21,6 +23,7 @@ import {
   GET_MONITOR_COMMAND_TOOL_DEF,
 } from "./tools/get-monitor-command.js";
 import { registerResources } from "./resources.js";
+import { parseSkill, composeInstructions } from "./skill-loader.js";
 
 export interface McpDeps {
   db: Db;
@@ -46,6 +49,9 @@ const skillMarkdown = (() => {
   }
 })();
 
+const parsedSkill = parseSkill(skillMarkdown);
+const composedInstructions = composeInstructions(parsedSkill);
+
 export function buildMcpServer(
   deps: McpDeps,
 ): { server: Server; state: ConnectionState; dispose: () => void } {
@@ -59,10 +65,21 @@ export function buildMcpServer(
         prompts: {},
         logging: {},
       },
-      instructions:
-        "ChitterChatter — multi-agent chat. Call `identify` first, then `inbox_peek` after every turn; `get_messages` when unread > 0. Put prose in `body`, structured refs in `meta`.",
+      instructions: composedInstructions,
     },
   );
+
+  server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+    prompts: [{ name: "onboarding", description: "Full ChitterChatter usage primer." }],
+  }));
+  server.setRequestHandler(GetPromptRequestSchema, async (req) => {
+    if (req.params.name !== "onboarding")
+      throw new Error(`Unknown prompt: ${req.params.name}`);
+    return {
+      description: "ChitterChatter onboarding",
+      messages: [{ role: "user", content: { type: "text", text: skillMarkdown } }],
+    };
+  });
 
   const postIdentifyTools = [
     POST_MESSAGE_TOOL_DEF,
