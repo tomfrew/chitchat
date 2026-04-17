@@ -9,8 +9,9 @@ export const GET_MONITOR_COMMAND_TOOL_DEF = {
 
 export function buildGetMonitorCommand(deps: McpDeps, state: ConnectionState) {
   return async () => {
-    if (!state.sessionId) throw new Error("Call identify first.");
-    const url = `http://${deps.host}:${deps.port}/sessions/${state.sessionId}/stream`;
+    if (!state.sessionId || !state.agentId) throw new Error("Call identify first.");
+    // viewer= filters self-events server-side so the agent isn't woken by its own posts.
+    const url = `http://${deps.host}:${deps.port}/sessions/${state.sessionId}/stream?viewer=${state.agentId}`;
     return {
       content: [
         {

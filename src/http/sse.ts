@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import type { AppDeps } from "./app.js";
 import { getSession } from "../storage/sessions.js";
+import { getAgent } from "../storage/agents.js";
 import type { HubEvent } from "../hub/events.js";
 
 function toSseEvent(e: HubEvent): { event: string; data: string } {
@@ -19,13 +20,37 @@ function toSseEvent(e: HubEvent): { event: string; data: string } {
         }),
       };
     case "peer_join":
-      return { event: "peer_join", data: JSON.stringify({ name: e.name, role: e.role, ts: Date.now() }) };
+      return {
+        event: "peer_join",
+        data: JSON.stringify({ name: e.name, role: e.role, ts: Date.now() }),
+      };
     case "peer_leave":
       return { event: "peer_leave", data: JSON.stringify({ name: e.name, ts: Date.now() }) };
     case "role_changed":
-      return { event: "role", data: JSON.stringify({ name: e.name, role: e.role, ts: Date.now() }) };
+      return {
+        event: "role",
+        data: JSON.stringify({ name: e.name, role: e.role, ts: Date.now() }),
+      };
     case "session_closed":
       return { event: "session_closed", data: JSON.stringify({ ts: Date.now() }) };
+  }
+}
+
+/**
+ * Returns true if the event is about the given viewer (self-event to suppress).
+ * The stream hands every event to every subscriber; without filtering, a posting
+ * agent wakes itself up via Monitor. Suppressing self-events here breaks that loop.
+ */
+function isSelfEvent(e: HubEvent, viewerAgentId: string, viewerName: string): boolean {
+  switch (e.type) {
+    case "message":
+      return e.message.agent_id === viewerAgentId;
+    case "peer_join":
+    case "peer_leave":
+    case "role_changed":
+      return e.name === viewerName;
+    case "session_closed":
+      return false;
   }
 }
 
@@ -34,10 +59,21 @@ export function sseRoutes(deps: AppDeps): Hono {
   r.get("/sessions/:id/stream", (c) => {
     const id = c.req.param("id");
     if (!getSession(deps.db, id)) return c.json({ error: "not found" }, 404);
+
+    const viewerId = c.req.query("viewer");
+    let viewerName: string | null = null;
+    if (viewerId) {
+      const agent = getAgent(deps.db, viewerId);
+      if (agent && agent.session_id === id) viewerName = agent.name;
+      // If the viewer id is unknown or cross-session, don't filter — fail-open so
+      // humans tailing with a stale id still see everything.
+    }
+
     return streamSSE(c, async (stream) => {
       const queue: HubEvent[] = [];
       let notify: (() => void) | null = null;
       const unsub = deps.hub.subscribe(id, (e) => {
+        if (viewerId && viewerName && isSelfEvent(e, viewerId, viewerName)) return;
         queue.push(e);
         notify?.();
       });
