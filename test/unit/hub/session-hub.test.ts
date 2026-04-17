@@ -12,6 +12,7 @@ function msgEvent(sessionId: string, id = "01HX"): HubEvent {
     body: "hi",
     meta: null,
     created_at: 0,
+    sender_role: "r",
   };
   return { type: "message", session_id: sessionId, sender_name: "Alice", sender_role: "r", message };
 }

@@ -35,6 +35,9 @@ const MIGRATIONS: string[] = [
     created_at  INTEGER NOT NULL
   );
   CREATE INDEX messages_session_id ON messages(session_id, id);`,
+  // v4: snapshot sender role on the message row so get_messages returns the role
+  // at the time of posting, not the live agents.role (which changes on update_role).
+  `ALTER TABLE messages ADD COLUMN sender_role TEXT;`,
 ];
 
 export function openDatabase(path: string): Db {

@@ -13,6 +13,8 @@ export interface MessageRow {
   body: string;
   meta: Record<string, unknown> | null;
   created_at: number;
+  /** Sender's role snapshotted at post time; null for system messages. */
+  sender_role: string | null;
 }
 
 export interface AppendMessageInput {
@@ -21,6 +23,8 @@ export interface AppendMessageInput {
   kind: MessageKind;
   body: string;
   meta: Record<string, unknown> | null;
+  /** Role at post time. Stored verbatim; never re-derived from agents.role. Defaults to null. */
+  sender_role?: string | null;
 }
 
 interface DbRow extends Omit<MessageRow, "meta"> {
@@ -40,10 +44,11 @@ export function appendMessage(db: Db, input: AppendMessageInput): MessageRow {
     body: input.body,
     meta: input.meta ? JSON.stringify(input.meta) : null,
     created_at: Date.now(),
+    sender_role: input.sender_role ?? null,
   };
   db.prepare(
-    `INSERT INTO messages (id, session_id, agent_id, kind, body, meta, created_at)
-     VALUES (@id, @session_id, @agent_id, @kind, @body, @meta, @created_at)`,
+    `INSERT INTO messages (id, session_id, agent_id, kind, body, meta, created_at, sender_role)
+     VALUES (@id, @session_id, @agent_id, @kind, @body, @meta, @created_at, @sender_role)`,
   ).run(row);
   return rowToMessage(row);
 }
@@ -103,13 +108,12 @@ export function latestMessageId(db: Db, sessionId: string): string | null {
 
 export interface MessageWithSender extends MessageRow {
   sender_name: string | null;
-  sender_role: string | null;
 }
 
-type JoinRow = DbRow & { sender_name: string | null; sender_role: string | null };
+type JoinRow = DbRow & { sender_name: string | null };
 
 function joinRowToMessage(r: JoinRow): MessageWithSender {
-  return { ...rowToMessage(r), sender_name: r.sender_name, sender_role: r.sender_role };
+  return { ...rowToMessage(r), sender_name: r.sender_name };
 }
 
 export function getMessagesWithSender(
@@ -121,8 +125,9 @@ export function getMessagesWithSender(
     throw new Error("getMessagesWithSender: pass at most one of { since, before }");
   }
   const limit = Math.min(opts.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
+  // sender_role comes from messages.sender_role (snapshot at post time), not agents.role.
   const joinSql = `
-    SELECT m.*, a.name AS sender_name, a.role AS sender_role
+    SELECT m.*, a.name AS sender_name
     FROM messages m LEFT JOIN agents a ON a.id = m.agent_id
     WHERE m.session_id = ?`;
 

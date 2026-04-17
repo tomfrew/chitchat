@@ -41,6 +41,7 @@ export function buildPostMessage(deps: McpDeps, state: ConnectionState) {
       kind: "chat",
       body: parsed.body,
       meta: parsed.meta ?? null,
+      sender_role: agent.role,
     });
 
     // Advance this agent's cursor past their own post so inbox_peek / get_messages
