@@ -15,12 +15,19 @@ const schema = z.object({
 export const POST_MESSAGE_TOOL_DEF = {
   name: "post_message",
   description:
-    "Send a chat message. Use `body` for prose. Put structured refs (URLs, PR numbers, commit SHAs) in `meta`, not in prose. Post at milestones/blockers/questions/decisions — not every step. `meta` max 4 KB serialized; `body` max 16 KB.",
+    "Send a chat message. Put everything in `body` as prose.\n\n" +
+    "`meta` is OPTIONAL — **omit it by default**. Include it only when you have parseable structured refs a peer or tool could act on programmatically: PR URLs, commit SHAs, file paths, branch names, test counts, state enums, job/investigation IDs. If you don't have that, leave it out — don't echo your body into meta, don't invent tags, don't add 'priority: normal' or 'status: working'.\n\n" +
+    "Post at milestones / blockers / questions / decisions — not every step. `meta` max 4 KB serialized; `body` max 16 KB.",
   inputSchema: {
     type: "object",
     properties: {
       body: { type: "string", minLength: 1, maxLength: BODY_LIMIT },
-      meta: { type: "object", additionalProperties: true },
+      meta: {
+        type: "object",
+        additionalProperties: true,
+        description:
+          "Optional. Omit unless you have parseable refs (PR URL, commit SHA, file paths, state enum). No prose, no filler tags.",
+      },
     },
     required: ["body"],
   },

@@ -76,26 +76,34 @@ If you're unsure whether to post, don't. A peer can always re-ping you if they a
 
 ## Message shape
 
-- `body`: prose, like a Slack message.
-- `meta`: free-form JSON object ≤ 4 KB with structured refs — stuff peers (and later, humans reading `chitchat show`) might want to parse. Don't put long text in `meta`; that's what `body` is for.
+- `body`: prose, like a Slack message. This is where everything goes.
+- `meta`: **optional — omit by default.** Most messages don't need it. Include `meta` only when you have parseable structured refs a peer or tool could act on programmatically.
 
-### Good `meta` shapes — taken from real sessions
+### When to include `meta`
+
+You have an actual artifact another agent (or a human later running `chitchat show`) would want to grab without reading your prose:
 
 ```json
+{"pr_url": "https://github.com/.../pull/42", "commit": "7346ed7"}
 {"files_changed": ["src/.../foo.ts", "tests/.../foo.test.ts"], "tests_added": 15, "branch": "tomfrew/debug-context"}
 {"investigation_id": "62b15659-2a4a-…", "last_tool_called": "tool_JZt2u0_getDatasetFields"}
 {"sdk_state_after_callback": "discovering", "callback_route_hit": "/agents/.../callback"}
 {"verified_states": ["ready", "connecting", "authenticating", "not-configured", "failed"], "verified_toolCount": 17}
-{"pr_url": "https://github.com/.../pull/42", "commit": "7346ed7"}
 ```
 
-The pattern: state tags, UUIDs, branches, file lists, enum values, tool invocations, test counts, cross-refs. Things another agent could write code against.
+The pattern: PR URLs, commit SHAs, file paths, branch names, UUIDs, state enums, test counts, tool invocations. Things code could consume.
 
-### Bad `meta` shapes
+### When NOT to include `meta` (most messages)
 
-- `{"message": "the full text of my message duplicated here"}` — use `body`.
-- `{"thinking": "a paragraph of my reasoning"}` — keep private or put in `body`.
-- `{"investigating": "OAuth callback → SDK discovering → never transitions to ready"}` — borderline; this is a prose status string, not a ref. OK if it's a one-line tag, not OK if it's a sentence.
+Default: no `meta` at all. Don't include it:
+
+- When you have no structured refs — just omit the field. Silence is a valid shape.
+- To echo your `body` (`{"message": "<body again>"}`).
+- To park reasoning (`{"thinking": "a paragraph of why I did X"}`) — keep private or fold into `body`.
+- To fill filler tags (`{"status": "working", "priority": "normal"}`) — adds noise with zero signal.
+- To stuff prose into a key (`{"investigating": "OAuth callback never transitions"}`) — that's just `body` in a nested box.
+
+If you catch yourself inventing a key because the field is there, stop and drop it.
 
 ## Ambiguity
 If a peer's intent is unclear and their answer is actually required, ask them via `post_message` rather than guessing. If their answer isn't required, proceed on best interpretation and note it in your next real post.
