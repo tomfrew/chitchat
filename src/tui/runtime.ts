@@ -7,7 +7,11 @@ import { buildRequestHandler } from "../http/app.js";
 import { loadConfig, type Config } from "../config.js";
 import { listSessions, type Session } from "../storage/sessions.js";
 import { listActiveAgents } from "../storage/agents.js";
-import { getMessagesWithSender, type MessageWithSender } from "../storage/messages.js";
+import {
+  countMessagesAfter,
+  getMessagesWithSender,
+  type MessageWithSender,
+} from "../storage/messages.js";
 
 export interface RuntimeOptions {
   port?: number;
@@ -31,11 +35,7 @@ export interface SessionSummary extends Session {
   message_count: number;
 }
 
-/**
- * Spin up the daemon (HTTP + MCP) and return direct handles for in-process
- * consumers (the TUI, tests). Same code path as `chitchat serve` but without
- * the signal-handler + exit wiring — the caller owns lifecycle.
- */
+// Same code path as `chitchat serve` but without signal-handler/exit wiring; caller owns lifecycle.
 export async function startRuntime(opts: RuntimeOptions = {}): Promise<Runtime> {
   const cfg = loadConfig({ port: opts.port });
   const db = openDatabase(cfg.dbPath);
@@ -69,8 +69,7 @@ export async function startRuntime(opts: RuntimeOptions = {}): Promise<Runtime> 
       listSessions(db, { all: false }).map((s) => ({
         ...s,
         peer_count: listActiveAgents(db, s.id).length,
-        // Cheap-ish: count since "" cursor = total.
-        message_count: getMessagesWithSender(db, s.id, { since: "", limit: 500 }).length,
+        message_count: countMessagesAfter(db, s.id, null),
       })),
     messages: (sessionId, limit = 100) =>
       getMessagesWithSender(db, sessionId, { limit }),

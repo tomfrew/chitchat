@@ -17,7 +17,6 @@ export function buildListPeers(deps: McpDeps, state: ConnectionState) {
         name: a.name,
         role: a.role,
         joined_at: a.joined_at,
-        last_active_at: a.joined_at,
         online: true,
       }));
     return { content: [{ type: "text", text: JSON.stringify(peers) }] };

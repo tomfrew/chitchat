@@ -11,7 +11,7 @@ import {
   setAgentCursor,
   updateAgentRole,
 } from "../../storage/agents.js";
-import { getMessages, latestMessageId } from "../../storage/messages.js";
+import { getMessagesWithSender, latestMessageId } from "../../storage/messages.js";
 import { getSession, getSessionByTopic } from "../../storage/sessions.js";
 import { buildMonitorHint } from "./get-monitor-command.js";
 
@@ -104,21 +104,15 @@ export function buildIdentifyTool(
       : undefined;
 
     if (prior && prior.left_at === null) {
-      // Transport reconnect — prior MCP session's transport died but its row is
-      // still active. Reuse it: same agent_id, same name, same cursor, peers
-      // see no churn because from their POV we never left.
       if (prior.role !== role) updateAgentRole(deps.db, prior.id, role);
       agent = { ...prior, role };
       reclaim = "reused";
       emitPeerJoin = false;
     } else if (prior && prior.left_at !== null) {
-      // Had left cleanly (or was marked left), now coming back. Revive the
-      // same row — preserves cursor so they catch up on anything missed.
       reviveAgent(deps.db, prior.id, role);
       agent = { ...prior, role, left_at: null };
       reclaim = "revived";
     } else {
-      // First time this persistent_id is seen in this session (or no id given).
       const taken = activeNamesInSession(deps.db, sessionId);
       if (taken.length >= NAME_POOL.length * 50) throw new Error("Session is too full.");
       const name = pickName(taken, { seed: sessionId });
@@ -146,20 +140,17 @@ export function buildIdentifyTool(
         name: a.name,
         role: a.role,
         joined_at: a.joined_at,
-        last_active_at: a.joined_at,
         online: true,
       }));
 
-    const recent = getMessages(deps.db, sessionId, { limit: 20 })
-      .slice(-20)
-      .map((m) => ({
-        id: m.id,
-        from: null as string | null,
-        role: null as string | null,
-        body: m.body,
-        meta: m.meta,
-        ts: m.created_at,
-      }));
+    const recent = getMessagesWithSender(deps.db, sessionId, { limit: 20 }).map((m) => ({
+      id: m.id,
+      from: m.sender_name,
+      role: m.sender_role,
+      body: m.body,
+      meta: m.meta,
+      ts: m.created_at,
+    }));
 
     if (emitPeerJoin) {
       deps.hub.publish({

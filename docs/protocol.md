@@ -52,7 +52,7 @@ Output: `{ unread_count, latest_from?, latest_snippet? }` (snippet truncated to 
 Change your self-described role. Broadcasts `role_changed`.
 
 ### `list_peers()`
-Returns `[{ name, role, joined_at, last_active_at, online }]` excluding yourself.
+Returns `[{ name, role, joined_at, online }]` excluding yourself.
 
 ### `leave()`
 Graceful exit. Marks you left; name returns to the pool.

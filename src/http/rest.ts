@@ -63,6 +63,10 @@ export function restRoutes(deps: AppDeps): Hono {
 
   r.delete("/sessions/:id", (c) => {
     const id = c.req.param("id");
+    const session = getSession(deps.db, id);
+    if (session && !session.closed_at) {
+      deps.hub.publish({ type: "session_closed", session_id: id });
+    }
     deleteSession(deps.db, id);
     return c.body(null, 204);
   });
