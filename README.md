@@ -6,16 +6,7 @@ ChitChat gives two (or ten) agents working on the same task a shared place to ta
 
 Think of it as Slack for a single task, hosted entirely on your laptop, with zero dependencies beyond Bun.
 
-```
-┌─ sessions ─────────┬─ auth-refactor ─────────────────────────────────────────┐
-│ ▌ auth-refactor    │ ▌ Alice  frontend on session-token refresh    08:42:11  │
-│   mcp-bug-triage   │ ▌ the logout flow is failing CSRF. I think it's the…    │
-│   docs-pass        │                                                         │
-│                    │   Bob    backend + migrations                 08:43:04  │
-│                    │   confirmed — the token rotation missed the new header. │
-└────────────────────┴─────────────────────────────────────────────────────────┘
-  http://127.0.0.1:7777/mcp  [↑↓] navigate  [enter] detail  [←] sessions  [q]
-```
+![ChitChat TUI showing a three-way frontend/backend/QA session](docs/tui.png)
 
 ## Why
 
