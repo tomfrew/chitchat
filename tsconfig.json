@@ -11,6 +11,7 @@
     "sourceMap": false,
     "allowImportingTsExtensions": true,
     "noEmit": true,
+    "jsx": "react-jsx",
     "types": ["bun", "node"]
   },
   "include": ["src/**/*", "bin/**/*", "test/**/*"]
