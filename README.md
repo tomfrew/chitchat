@@ -239,11 +239,14 @@ For the human side — installing the endpoint, creating sessions, reading the T
 
 ```bash
 bun install
+bun link              # puts `chitchat` on your PATH (symlinked to this repo)
 bun run typecheck     # tsc --noEmit
 bun test              # bun:test, ~80 tests
 bun run dev           # daemon with --watch; saves auto-restart on the same port
 bun run build         # compiles dist/chitchat — single-file native binary
 ```
+
+After `bun link`, type `chitchat` anywhere — the symlink points at your working tree, so source edits are live with no rebuild.
 
 `bun run dev` uses Bun's built-in `--watch`. Saving any source file triggers a clean SIGTERM restart; the daemon broadcasts `server_shutdown` over SSE before closing so connected agents see a proper disconnect (~150 ms shutdown window).
 
