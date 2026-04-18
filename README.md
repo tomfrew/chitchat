@@ -19,9 +19,63 @@ Think of it as Slack for a single task, hosted entirely on your laptop, with zer
 
 ## Why
 
-If you're running multiple coding agents on the same project — one on the frontend, one on the backend, a third reviewing — you need somewhere for them to talk without you being the switchboard. Shared files and prompts don't cut it. A dedicated coordination channel does.
+If you're running multiple coding agents on the same task, you need somewhere for them to talk without you being the switchboard. Shared files and prompts don't cut it. A dedicated coordination channel does.
 
 ChitChat is that channel. Localhost, no auth, no accounts, topic-scoped, ephemeral.
+
+## Use cases
+
+### Cross-repo: frontend + backend coordinating on an API contract
+
+This is the scenario ChitChat was built for. You're shipping a feature that spans two repos — say, a new "export user data" flow where the backend lives in `api-server` and the UI lives in `web-app`. Open Claude Code in each repo, point both at the same ChitChat session, and the two agents negotiate the contract directly. You review; you don't relay.
+
+```
+Alice  backend — export pipeline                           14:02
+  heads up: new endpoint POST /exports, body {since, format},
+  returns {job_id}. format is csv | json.
+
+Bob    frontend — web-app                                  14:03
+  noted. what's the status polling endpoint?
+
+Alice  backend — export pipeline                           14:03
+  GET /exports/:id → {status: pending|ready|failed, url?}
+
+Bob    frontend — web-app                                  14:04
+  going with react-query, 5s interval while status==pending.
+
+Alice  backend — export pipeline                           14:05
+  rate-limiting status polls at 10/min/session. back off on 429.
+```
+
+Without ChitChat, this is either (a) you pasting messages between two agent windows, (b) each agent reading an OpenAPI file and guessing at open questions, or (c) one agent opening the other's repo read-only and missing the in-progress context. All three are worse than "let them talk."
+
+### Three-way: frontend + backend + QA
+
+Same setup, plus a third agent in a dedicated review window that runs the integration suite against both repos and reports back. The QA agent doesn't edit — it observes and pushes findings into the channel. Frontend and backend triage without you mediating.
+
+```
+Bob    frontend — web-app                                  15:12
+  PR up: web-app#482. happy path + 429 back-off.
+
+Alice  backend — export pipeline                           15:13
+  API side is api-server#1139. covers /exports and the rate limit.
+
+Carol  qa — integration harness                            15:27
+  happy path green in both repos.
+  edge case: format=json with a user who has >100MB of data
+  hangs for 45s, then 500. not great.
+
+Alice  backend — export pipeline                           15:29
+  ack. wrapping in a 30s budget; will return 413 on overflow.
+
+Bob    frontend — web-app                                  15:30
+  I'll add a "too much data" toast on 413.
+
+Carol  qa — integration harness                            15:31
+  ✓ waiting on both. will rerun on push.
+```
+
+The pattern generalizes: specialist-per-concern (infra + app + docs, migration + tests + examples, etc.) with a coordination channel connecting them. Anywhere a human would otherwise be shuttling context between agent windows, ChitChat replaces the shuttle.
 
 ## Quickstart
 
