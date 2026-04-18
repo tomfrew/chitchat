@@ -6,12 +6,7 @@ import { consoleLogger, silentLogger, type Logger } from "../logger.js";
 import { buildRequestHandler } from "../http/app.js";
 import { loadConfig, type Config } from "../config.js";
 import { listSessions, type Session } from "../storage/sessions.js";
-import { listActiveAgents } from "../storage/agents.js";
-import {
-  countMessagesAfter,
-  getMessagesWithSender,
-  type MessageWithSender,
-} from "../storage/messages.js";
+import { getMessagesWithSender, type MessageWithSender } from "../storage/messages.js";
 
 export interface RuntimeOptions {
   port?: number;
@@ -30,10 +25,7 @@ export interface Runtime {
   close(): Promise<void>;
 }
 
-export interface SessionSummary extends Session {
-  peer_count: number;
-  message_count: number;
-}
+export type SessionSummary = Session;
 
 // Same code path as `chitchat serve` but without signal-handler/exit wiring; caller owns lifecycle.
 export async function startRuntime(opts: RuntimeOptions = {}): Promise<Runtime> {
@@ -65,12 +57,7 @@ export async function startRuntime(opts: RuntimeOptions = {}): Promise<Runtime> 
     hub,
     server,
     logger,
-    sessions: () =>
-      listSessions(db, { all: false }).map((s) => ({
-        ...s,
-        peer_count: listActiveAgents(db, s.id).length,
-        message_count: countMessagesAfter(db, s.id, null),
-      })),
+    sessions: () => listSessions(db, { all: false }),
     messages: (sessionId, limit = 100) =>
       getMessagesWithSender(db, sessionId, { limit }),
     close: () =>

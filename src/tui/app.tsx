@@ -224,9 +224,7 @@ function SessionsPane({
       ) : (
         sessions.map((s, i) => {
           const isSel = i === selectedIdx;
-          const label = truncate(s.topic, innerWidth - 12);
-          const counts = `${s.peer_count}p ${s.message_count}m`;
-          const spaces = Math.max(1, innerWidth - 1 - label.length - counts.length);
+          const label = truncate(s.topic, innerWidth - 1);
           return (
             <Text key={s.id} bold={isSel}>
               {isSel ? (
@@ -235,8 +233,6 @@ function SessionsPane({
                 <Text>{" "}</Text>
               )}
               <Text color="white">{label}</Text>
-              {" ".repeat(spaces)}
-              <Text color="gray">{counts}</Text>
             </Text>
           );
         })
