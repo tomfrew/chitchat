@@ -38,25 +38,20 @@ export async function runServe(opts: { port?: number }): Promise<void> {
     }
     shuttingDown = true;
     logger.info("shutdown", { reason });
-    // Tell every connected SSE subscriber we're going down so agents can stop
-    // their Monitor cleanly rather than seeing a raw socket drop. Give the
-    // queues a brief flush window before we force connections closed.
+    // Broadcast server_shutdown before closing so agents get a clean signal.
     hub.broadcast((sessionId) => ({
       type: "server_shutdown",
       session_id: sessionId,
       reason,
     }));
     setTimeout(() => {
-      // SSE streams and MCP long-lived transports never self-close, so a plain
-      // server.close(cb) hangs forever. Force them closed.
+      // SSE and MCP transports never self-close; force them so server.close() can resolve.
       server.closeAllConnections?.();
       server.close(() => {
         db.close();
         process.exit(0);
       });
     }, 150);
-    // Safety net: if closeAllConnections missed something or the OS takes too
-    // long to fire the close event, hard-exit after a short grace window.
     setTimeout(() => {
       process.stderr.write("shutdown timeout; forcing exit\n");
       process.exit(1);

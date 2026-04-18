@@ -99,19 +99,14 @@ export function App({ runtime }: { runtime: Runtime }) {
     }
   };
 
-  // Sessions pane: 22% of width, clamped to [20, 36] so it never starves
-  // the messages pane on narrow terminals nor wastes space on wide ones.
   const sessionsWidth = Math.max(20, Math.min(36, Math.floor(cols * 0.22)));
   const messagesWidth = cols - sessionsWidth;
   const LOGO_HEIGHT = 3;
   const LOGO_GAP = 1;
-  const bodyHeight = rows - 1; // reserve status bar only
-  const sessionsHeight = bodyHeight - LOGO_HEIGHT - LOGO_GAP; // logo + spacer stolen from sessions column only
+  const bodyHeight = rows - 1;
+  const sessionsHeight = bodyHeight - LOGO_HEIGHT - LOGO_GAP;
 
-  // Render the detail view as a full-screen replacement instead of an
-  // absolute-positioned overlay. Ink's position=absolute doesn't composite
-  // a background under the floating box, so underlying content bleeds
-  // through. Screen-swap gives us a clean, readable modal.
+  // Ink can't composite overlays with a background, so modals are full-screen swaps.
   if (focus === "detail" && messages[messageIdx]) {
     return (
       <Box flexDirection="column" width={cols} height={rows}>
@@ -133,8 +128,6 @@ export function App({ runtime }: { runtime: Runtime }) {
   }
 
   if (focus === "new") {
-    // Centered prompt; ink doesn't composite overlays cleanly so the
-    // panes underneath are hidden while the modal is up.
     return (
       <Box flexDirection="column" width={cols} height={rows}>
         <Box
@@ -184,10 +177,6 @@ export function App({ runtime }: { runtime: Runtime }) {
 
 // ----- logo -----
 
-/**
- * Small 3-row banner sized to fit inside (or beside) the sessions pane.
- * Quarter-block glyphs keep it tight — about 15 columns wide.
- */
 function Logo({ width: _width }: { width: number }) {
   const art = [
     "▄▖▌ ▘▗ ▄▖▌   ▗ ",
@@ -237,9 +226,6 @@ function SessionsPane({
           const isSel = i === selectedIdx;
           const label = truncate(s.topic, innerWidth - 12);
           const counts = `${s.peer_count}p ${s.message_count}m`;
-          // 2 leading chars (marker + space) and 1 trailing safety gutter
-          // eat into the available width before label/padding/counts.
-          // 1 marker col + label + padding + counts = innerWidth.
           const spaces = Math.max(1, innerWidth - 1 - label.length - counts.length);
           return (
             <Text key={s.id} bold={isSel}>
@@ -283,13 +269,8 @@ function MessagesPane({
 }) {
   const innerWidth = Math.max(20, width - 4);
 
-  // Each MessagePreview renders exactly 2 terminal lines. Compute visible
-  // count based on the actual rendered height: pane height - top/bottom
-  // border (2) - title row (1) - footer counter row (1) = list area.
-  // 2 content lines per message + 1 blank spacer row for breathing room.
+  // 3 rows per message (2 content + 1 spacer); 3 rows of chrome (title, bottom border, counter).
   const LINES_PER_ITEM = 3;
-  // TitledBox overhead: 1 row for inline-title border + 1 for bottom
-  // border of the inner Box + 1 for the footer counter = 3 rows.
   const listHeight = Math.max(LINES_PER_ITEM, height - 3);
   const visibleItems = Math.max(1, Math.floor(listHeight / LINES_PER_ITEM));
 
@@ -353,9 +334,7 @@ function MessagePreview({
   const body = oneLine(message.body, Math.max(20, width - 4));
   const nameColor = colorForName(from);
 
-  // Header layout: [▌][name (role)]  ……padding……  [ts]
-  // Timestamp pinned to the right edge. Truncate role if the header
-  // would overflow.
+  // Header: [▌][name (role)]  …padding…  [ts]
   const marker = 1;
   const nameLen = from.length + (role ? 1 + role.length : 0);
   const tsLen = ts.length;
@@ -474,10 +453,7 @@ function DetailScreen({
     for (const w of wrap(l, innerWidth)) lines.push(w);
   }
 
-  // Approximate the visible rows: outer box height minus top+bottom border
-  // + header row. Used only to clamp the scroll so you can't scroll past
-  // the last useful position (otherwise scrolling past-end and back looks
-  // like the content is jumping).
+  // Clamp scroll so past-end scrolling doesn't look like the content is jumping.
   const approxViewport = Math.max(3, height - 3);
   const maxScroll = Math.max(0, lines.length - approxViewport);
   const effectiveScroll = Math.min(Math.max(0, scroll), maxScroll);
@@ -487,10 +463,7 @@ function DetailScreen({
   const visible = lines.slice(from, from + approxViewport);
   return (
     <TitledBox title={titleText} width={width} height={height}>
-      {/* One <Text> per row. Two adjacent multi-line <Text> siblings in a
-          flex column render incorrectly in Ink (the second block's rows
-          collide with the first's), so we flatten to per-line nodes and
-          color each based on whether it's in the meta section. */}
+      {/* One <Text> per row — adjacent multi-line <Text> siblings collide in Ink's flex layout. */}
       <Box flexDirection="column" flexGrow={1} overflow="hidden">
         {visible.map((line, i) => {
           const absIdx = from + i;
@@ -519,9 +492,6 @@ function NewSessionPrompt({
   useInput((_input, key) => {
     if (key.escape) onCancel();
   });
-  // Render above the status bar via Ink's DOM order; the main layout
-  // already drew its content, this sits at the end of the Box stream.
-  // Not using position=absolute because ink doesn't composite a background.
   return (
     <TitledBox title="new session" width={60} height={6}>
       <Box>
@@ -567,13 +537,7 @@ function StatusBar({
 
 // ----- helpers -----
 
-/**
- * A bordered box with the title embedded inline on the top border, the
- * way blessed / tview / helix etc. render paneled apps. Ink doesn't have
- * a native title-in-border prop, so we draw the top edge ourselves and
- * disable the inner Box's top border with `borderTop={false}` so the
- * corners align.
- */
+// Ink has no title-in-border prop, so we draw the top edge ourselves.
 function TitledBox({
   title,
   width,
@@ -609,12 +573,7 @@ function TitledBox({
   );
 }
 
-/**
- * Deterministic per-name color. Same name across the session — and across
- * sessions — always picks the same color, so you build a visual memory of
- * who's who. Palette avoids red (errors), gray/black (dim text), and
- * white (default content) so the name genuinely stands out.
- */
+// Palette avoids red/gray/white so names stand out against status and system text.
 const NAME_PALETTE = [
   "cyan",
   "green",
@@ -644,10 +603,6 @@ function truncate(s: string, n: number): string {
 
 function oneLine(s: string, n: number): string {
   return truncate(s.replace(/\s+/g, " ").trim(), n);
-}
-
-function padEnd(s: string, n: number): string {
-  return s.length >= n ? s.slice(0, n) : s + " ".repeat(n - s.length);
 }
 
 function wrap(s: string, n: number): string[] {

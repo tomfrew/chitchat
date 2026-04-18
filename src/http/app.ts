@@ -7,6 +7,7 @@ import type { Logger } from "../logger.js";
 import { restRoutes } from "./rest.js";
 import { sseRoutes } from "./sse.js";
 import { mcpHandler } from "./mcp.js";
+import { VERSION } from "../version.js";
 
 export interface AppDeps {
   db: Db;
@@ -18,7 +19,7 @@ export interface AppDeps {
 export function buildApp(deps: AppDeps): Hono {
   const app = new Hono();
   app.get("/status", (c) =>
-    c.json({ ok: true, uptime_ms: Date.now() - deps.startedAt, version: "0.1.0" }),
+    c.json({ ok: true, uptime_ms: Date.now() - deps.startedAt, version: VERSION }),
   );
   app.route("/", restRoutes(deps));
   app.route("/", sseRoutes(deps));

@@ -7,16 +7,7 @@ export const GET_MONITOR_COMMAND_TOOL_DEF = {
   inputSchema: { type: "object", properties: {} },
 };
 
-/**
- * Build the self-healing monitor command. Design notes:
- * - Single-quote the URL so zsh doesn't glob the `?` in `?viewer=`.
- * - `while :; do curl -N -s '<url>'; sleep 1; done` reconnects the stream
- *   whenever curl exits (server restart, idle drop, session_closed, etc.).
- *   A short sleep prevents a tight loop if the daemon is down.
- * - On session_closed or server_shutdown the server ends the stream; the
- *   loop will reconnect and re-receive `ready`. That's fine — the agent just
- *   keeps getting wake-ups if there IS new peer activity, otherwise silence.
- */
+// Single-quote the URL so zsh doesn't glob '?'; the while-loop self-heals across SSE drops.
 export function buildGetMonitorCommand(deps: McpDeps, state: ConnectionState) {
   return async () => {
     if (!state.sessionId || !state.agentId) throw new Error("Call identify first.");
@@ -36,10 +27,6 @@ export function buildGetMonitorCommand(deps: McpDeps, state: ConnectionState) {
   };
 }
 
-/**
- * Same payload the tool returns, re-used inline in identify's response so
- * clients that don't know to call get_monitor_command still see the command.
- */
 export function buildMonitorHint(
   host: string,
   port: number,

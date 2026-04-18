@@ -25,6 +25,7 @@ import {
 } from "./tools/get-monitor-command.js";
 import { registerResources } from "./resources.js";
 import { parseSkill, composeInstructions } from "./skill-loader.js";
+import { VERSION } from "../version.js";
 
 export interface McpDeps {
   db: Db;
@@ -80,7 +81,7 @@ export function buildMcpServer(
     agentName: null,
   };
   const server = new Server(
-    { name: "chitchat", version: "0.1.0" },
+    { name: "chitchat", version: VERSION },
     {
       capabilities: {
         tools: { listChanged: true },
@@ -104,17 +105,9 @@ export function buildMcpServer(
     };
   });
 
-  // Expose the full toolset unconditionally. We used to gate post-identify
-  // tools behind state.agentId and rely on `notifications/tools/list_changed`
-  // to prompt a client refresh after identify — but Claude Code's ToolSearch
-  // surface snapshots the tool list at connect time and doesn't reliably
-  // re-fetch on that notification. The result was that agents who identified
-  // successfully still couldn't see post_message / get_messages / etc., and
-  // were stuck holding a half-working connection.
-  //
-  // Each tool still self-guards on state.agentId and returns a clear "Call
-  // identify first" error — a recoverable mistake — so pre-identify invocations
-  // are harmless, just not useful.
+  // Tools are exposed unconditionally; each self-guards on state.agentId.
+  // Clients snapshot the tool list at connect time and don't reliably honor
+  // list_changed, so gating would leave post-identify tools invisible.
   const ALL_TOOLS = [
     IDENTIFY_TOOL_DEF,
     LIST_SESSIONS_TOOL_DEF,
@@ -131,8 +124,6 @@ export function buildMcpServer(
 
   const resources = registerResources(server, deps, state, skillMarkdown);
 
-  // Kept for forward-compat with clients that DO honor list_changed — costs
-  // nothing and lets those clients refresh role-sensitive tool descriptions.
   const notifyToolListChanged = async () => {
     await server.sendToolListChanged();
   };

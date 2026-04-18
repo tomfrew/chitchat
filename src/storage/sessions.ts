@@ -66,9 +66,3 @@ export function closeSession(db: Db, id: string): void {
 export function deleteSession(db: Db, id: string): void {
   db.prepare("DELETE FROM sessions WHERE id = ?").run(id);
 }
-
-export function renameSession(db: Db, id: string, updates: { description?: string }): void {
-  if (updates.description !== undefined) {
-    db.prepare("UPDATE sessions SET description = ? WHERE id = ?").run(updates.description, id);
-  }
-}

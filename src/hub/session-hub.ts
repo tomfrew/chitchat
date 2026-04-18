@@ -36,12 +36,7 @@ export class SessionHub {
     return this.subs.get(sessionId)?.size ?? 0;
   }
 
-  /**
-   * Fan an event out to every active subscription, regardless of session. Used
-   * for server-wide signals like shutdown that need to reach every connected
-   * viewer. Each subscriber is handed a copy of the event tagged with its own
-   * session id so the existing per-session dispatch path stays intact.
-   */
+  // Each subscriber gets the event tagged with its own session_id so the per-session dispatch stays intact.
   broadcast(makeEvent: (sessionId: string) => HubEvent): void {
     for (const sessionId of this.subs.keys()) {
       this.publish(makeEvent(sessionId));

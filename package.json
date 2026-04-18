@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "description": "Self-hosted MCP server for multi-agent coordination.",
   "license": "MIT",
+  "author": "Tom Frew",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "agents",
+    "multi-agent",
+    "cli",
+    "ai",
+    "llm"
+  ],
   "type": "module",
   "engines": {
     "bun": ">=1.1"
@@ -10,7 +20,7 @@
   "bin": {
     "chitchat": "./bin/chitchat.ts"
   },
-  "files": ["bin", "src", "skills", "tsconfig.json"],
+  "files": ["bin", "src", "skills", "LICENSE", "tsconfig.json"],
   "scripts": {
     "dev": "bun --watch run bin/chitchat.ts serve",
     "start": "bun run bin/chitchat.ts serve",
@@ -27,6 +37,7 @@
     "ink": "^7.0.1",
     "ink-text-input": "^6.0.0",
     "react": "^19.2.5",
+    "react-devtools-core": "^7.0.1",
     "ulid": "^2.3.0",
     "zod": "^3.23.0"
   },

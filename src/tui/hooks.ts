@@ -2,11 +2,7 @@ import { useEffect, useState } from "react";
 import type { Runtime, SessionSummary } from "./runtime.js";
 import type { MessageWithSender } from "../storage/messages.js";
 
-/**
- * Reactive session list. Polls every 2s to pick up sessions an agent
- * created via REST, and re-queries immediately on any session-scoped hub
- * event (message/peer change implies the session list counts are stale).
- */
+// Polls every 2s to catch sessions created via REST by an agent.
 export function useSessions(runtime: Runtime): SessionSummary[] {
   const [sessions, setSessions] = useState<SessionSummary[]>(() => runtime.sessions());
 
@@ -25,10 +21,7 @@ export function useSessions(runtime: Runtime): SessionSummary[] {
   return sessions;
 }
 
-/**
- * Live-updating messages for a session. Initial load pulls history via
- * storage; subsequent updates come from the hub in-memory — no polling.
- */
+// Initial load from storage; live updates from the hub in-memory, no polling.
 export function useMessages(runtime: Runtime, sessionId: string | null): MessageWithSender[] {
   const [messages, setMessages] = useState<MessageWithSender[]>([]);
 

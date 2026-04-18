@@ -41,11 +41,7 @@ function toSseEvent(e: HubEvent): { event: string; data: string } {
   }
 }
 
-/**
- * Returns true if the event is about the given viewer (self-event to suppress).
- * The stream hands every event to every subscriber; without filtering, a posting
- * agent wakes itself up via Monitor. Suppressing self-events here breaks that loop.
- */
+// Suppress self-events; otherwise a posting agent wakes itself via Monitor.
 function isSelfEvent(e: HubEvent, viewerAgentId: string, viewerName: string): boolean {
   switch (e.type) {
     case "message":
@@ -85,11 +81,7 @@ export function sseRoutes(deps: AppDeps): Hono {
         notify?.();
       });
 
-      // Keepalive: stream an SSE comment every 10s so idle-connection reapers
-      // (client HTTP timeouts, OS-level NAT timeouts, corporate proxies — some
-      // of which reap on 30s idle) don't silently close the stream. Comments
-      // don't surface as events to consumers, so this is invisible to the
-      // Monitor tool.
+      // Keepalive comment every 10s to beat 30s-idle reapers (proxies, NAT).
       const keepalive = setInterval(() => {
         queue.push({ __keepalive: true } as unknown as HubEvent);
         notify?.();

@@ -8,13 +8,14 @@ import { runTail } from "./commands/tail.js";
 import { runClose } from "./commands/close.js";
 import { runRm } from "./commands/rm.js";
 import { runDefault } from "./commands/tui.js";
+import { VERSION } from "../version.js";
 
 export function buildCli(): Command {
   const program = new Command();
   program
     .name("chitchat")
     .description("Self-hosted MCP server for multi-agent coordination.")
-    .version("0.1.0");
+    .version(VERSION);
 
   program
     .command("tui", { isDefault: true })

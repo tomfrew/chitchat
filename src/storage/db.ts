@@ -57,13 +57,8 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE INDEX IF NOT EXISTS messages_session_id ON messages(session_id, id);
 `;
 
-/**
- * bun:sqlite resolves `@name` / `$name` placeholders by looking up *prefixed*
- * keys on the bind object (e.g. `{ "@name": "x" }`), where better-sqlite3
- * accepted plain keys (`{ name: "x" }`). We normalize by adding `@` prefixes
- * to plain object keys at bind time so the rest of the storage layer can
- * write idiomatic row objects.
- */
+// bun:sqlite binds named params by looking up prefixed keys ("@name") on the
+// input object, not plain keys. Prefix here so call sites can pass idiomatic rows.
 function prefixKeys(arg: unknown): unknown {
   if (arg === null || typeof arg !== "object" || Array.isArray(arg)) return arg;
   const out: Record<string, unknown> = {};
