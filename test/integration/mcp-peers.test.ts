@@ -65,9 +65,10 @@ describe("MCP peers", () => {
     const a = await connectMcp(srv.baseUrl, s.id);
     await call(a.client, "identify", { role: "r" });
     const out = await call(a.client, "get_monitor_command");
-    // Self-healing reconnect loop with single-quoted URL (zsh-safe).
+    // Self-healing reconnect loop, single-quoted URL (zsh-safe), grep strips
+    // SSE keepalive comments and blank lines so Monitor only wakes on real events.
     expect(out.command).toMatch(
-      /^while :; do curl -N -s 'http:\/\/127\.0\.0\.1:\d+\/sessions\/[^\/]+\/stream\?viewer=[0-9A-HJKMNP-TV-Z]{26}'; sleep 1; done$/i,
+      /^while :; do curl -N -s 'http:\/\/127\.0\.0\.1:\d+\/sessions\/[^\/]+\/stream\?viewer=[0-9A-HJKMNP-TV-Z]{26}' \| grep --line-buffered -Ev '\^\(:\|\$\)'; sleep 1; done$/i,
     );
     await a.close();
   });
